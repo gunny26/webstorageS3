@@ -38,8 +38,8 @@ class BlockStorageClient():
             sys.exit(1)
         configfile = os.path.join(self._homepath, "webstorage.yml")
         if os.path.isfile(configfile):
-            with open(configfile) as infile:
-                self._config = yaml.load(infile)
+            with open(configfile, "rt") as infile:
+                self._config = yaml.load(infile.read())
                 # use proxy, if defined in config
                 if "HTTP_PROXY" in self._config:
                     os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
