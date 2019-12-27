@@ -5,7 +5,7 @@ from io import BytesIO
 import logging
 logging.basicConfig(level=logging.INFO)
 # own modules
-from BlockStorageClientS3 import BlockStorageClient, BlockStorageError
+from webstorageS3 import BlockStorageClient, BlockStorageError
 
 BS = BlockStorageClient()
 

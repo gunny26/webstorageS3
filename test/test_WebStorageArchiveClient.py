@@ -7,7 +7,7 @@ import unittest
 import logging
 logging.basicConfig(level=logging.INFO)
 # own modules
-from WebStorageArchiveClientS3 import WebStorageArchiveClient
+from webstorageS3 import WebStorageArchiveClient
 
 WSAC = WebStorageArchiveClient()
 

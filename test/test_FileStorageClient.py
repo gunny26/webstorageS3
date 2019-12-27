@@ -5,14 +5,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 # own modules
 from webstorageS3 import FileStorageClient
-#!/usr/bin/python
-import hashlib
-import unittest
-from io import BytesIO
-import logging
-logging.basicConfig(level=logging.INFO)
-# own modules
-from BlockStorageClientS3 import BlockStorageClient, BlockStorageError
 
 FS = FileStorageClient()
 
