@@ -4,33 +4,68 @@ import json
 import logging
 logging.basicConfig(level=logging.INFO)
 # own modules
-from FileStorageClientS3 import FileStorageClient
+from webstorageS3 import FileStorageClient
+#!/usr/bin/python
+import hashlib
+import unittest
+from io import BytesIO
+import logging
+logging.basicConfig(level=logging.INFO)
+# own modules
+from BlockStorageClientS3 import BlockStorageClient, BlockStorageError
+
+FS = FileStorageClient()
+
+class Test(unittest.TestCase):
+
+    def setUp(self):
+        self.fs = FS
+
+    def test_checksums(self):
+        """
+        get available checksums
+        """
+        print("Test checksums:")
+        checksums = self.fs.checksums
+        print(f"found {len(checksums)} in FileStorage")
+
+    def test_put(self):
+        """
+        put a file onto Filestorage
+        """
+        print("Test PUT:")
+        with open("../testdata/block.bin", "rb") as infile:
+            metadata = self.fs.put(infile)
+            print("received metadata from put:")
+            print(json.dumps(metadata, indent=2))
+
+    def test_get(self):
+        """
+        getting some files from FileStorage
+        """
+        print("Test GET verified:")
+        limit = 10
+        for filechecksum in self.fs.checksums:
+            metadata = self.fs.get(filechecksum)
+            print(json.dumps(metadata, indent=4))
+            print("file {filechecksum} consists of {len(metadata['blockchain'])} blocks")
+            digest = hashlib.sha1()
+            size = 0
+            localdata = bytes()
+            if len(metadata["blockchain"]) < 10:
+                for data in self.fs.read(filechecksum):
+                    localdata += data
+                    print("received block with length ", len(data))
+                    digest.update(data)
+                    size += len(data)
+            print("calculated digest ", digest.hexdigest())
+            print("calculated size ", size)
+            assert digest.hexdigest() == filechecksum
+            assert size == metadata["size"]
+            if limit == 0:
+                break
+            limit -= 1
 
 
 if __name__ == "__main__":
-    fs = FileStorageClient()
-    print("checking all existing files in filestorage")
-    checksums = fs.checksums
-    print("found %d file checksums" % len(checksums))
-    with open("test.dbm", "rb") as infile:
-        fs.put(infile)
-    for filechecksum in checksums:
-        metadata = fs.get(filechecksum)
-        print(json.dumps(metadata, indent=4))
-        print("file %s consists of %d blocks" % (filechecksum, len(metadata["blockchain"])))
-        digest = hashlib.sha1()
-        size = 0
-        localdata = bytes()
-        if len(metadata["blockchain"]) < 10:
-            for data in fs.read(filechecksum):
-                localdata += data
-                print("received block with length ", len(data))
-                digest.update(data)
-                size += len(data)
-        print("calculated digest ", digest.hexdigest())
-        print("calculated size ", size)
-        assert digest.hexdigest() == filechecksum
-        assert size == metadata["size"]
-    print("put some data in filestorage")
-    res = fs.put(open("test.dbm", "rb"))
-    print(res)
+    unittest.main()
