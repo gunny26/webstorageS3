@@ -16,12 +16,8 @@ import re
 import json
 import logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
-# logging.getLogger("requests").setLevel(logging.WARNING)
-# logging.getLogger("urllib3").setLevel(logging.WARNING)
 # own modules
 from webstorageS3 import WebStorageArchiveClient, FileStorageClient
-# from WebStorageArchiveClientS3 import WebStorageArchiveClient
-# from FileStorageClientS3 import FileStorageClient
 
 def filemode(st_mode):
     """
