@@ -246,7 +246,7 @@ def test(filestorage, data, level=0):
     blockset = set() # unique list of blockchecksums
     if level == 0: # check only checksum existance in filestorage
         for absfile, filedata in data["filedata"].items():
-            if filestorage.exists(filedata["checksum"]) is True:
+            if filedata["checksum"] in filestorage.exist:
                 logging.info("FILE-CHECKSUM %s EXISTS  for %s", filedata["checksum"], absfile)
                 filecount += 1
                 fileset.add(filedata["checksum"])
@@ -259,7 +259,7 @@ def test(filestorage, data, level=0):
             fileset.add(filedata["checksum"])
             for blockchecksum in metadata["blockchain"]:
                 blockset.add(blockchecksum)
-                if blockstorage.exists(blockchecksum) is True:
+                if blockchecksum in blockstorage:
                     logging.info("BLOCKCHECKSUM %s EXISTS", blockchecksum)
                 else:
                     logging.error("BLOCKCHECKSUM %s MISSING", blockchecksum)
