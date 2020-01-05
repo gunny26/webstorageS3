@@ -12,7 +12,7 @@ args = {"name": "webstorageS3",
         "platforms": ["any", ],
         "license": "LGPLv2",
         "packages": ["webstorageS3"],
-        "scripts": ["bin/wstar.py", "bin/fget.py", "bin/fput.py"],
+        "scripts": ["bin/wstar.py", "bin/fget.py", "bin/fput.py", "bin/bstool.py", "bin/fstool.py"],
         "package_dir": {
             "webstorageS3": "webstorageS3",
             },

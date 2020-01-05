@@ -61,8 +61,8 @@ class Test(unittest.TestCase):
         """
         print("Test Exists:")
         checksum, status = self.bs.put(testblock)
-        self.assertTrue(self.bs.exists(checksum))
-        self.assertFalse(self.bs.exists("0" * 40)) # illegal checksum
+        self.assertTrue(checksum in self.bs)
+        self.assertFalse("0" * 40 in self.bs) # illegal checksum
 
 
 if __name__ == "__main__":

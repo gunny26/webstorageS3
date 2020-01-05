@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import unittest
 import hashlib
 import json
 import logging
@@ -26,7 +27,7 @@ class Test(unittest.TestCase):
         put a file onto Filestorage
         """
         print("Test PUT:")
-        with open("../testdata/block.bin", "rb") as infile:
+        with open("block.bin", "rb") as infile:
             metadata = self.fs.put(infile)
             print("received metadata from put:")
             print(json.dumps(metadata, indent=2))
@@ -40,7 +41,7 @@ class Test(unittest.TestCase):
         for filechecksum in self.fs.checksums:
             metadata = self.fs.get(filechecksum)
             print(json.dumps(metadata, indent=4))
-            print("file {filechecksum} consists of {len(metadata['blockchain'])} blocks")
+            print(f"file {filechecksum} consists of {len(metadata['blockchain'])} blocks")
             digest = hashlib.sha1()
             size = 0
             localdata = bytes()

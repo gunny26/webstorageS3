@@ -14,10 +14,11 @@ import yaml
 import boto3
 from botocore.exceptions import ClientError
 # own modules
+from .StorageClientS3 import StorageClient
 from .BlockStorageClientS3 import BlockStorageClient
+from .Checksums import Checksums
 
-
-class FileStorageClient():
+class FileStorageClient(StorageClient):
     """
     put some arbitrary file like data object into BlockStorage and remember how to reassemble it
     the recipe to reassemble will be stored in FileStorage
@@ -25,43 +26,16 @@ class FileStorageClient():
 
     def __init__(self, cache=True):
         """__init__"""
+        super(FileStorageClient, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._cache = cache
-        self._checksums = []
         self._bs = BlockStorageClient(cache=cache)
-        # according to platform search for config file in home directory
-        if os.name == "nt":
-            self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-        else:
-            self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-        logging.debug("using config directory %s", self._homepath)
-        if not os.path.isdir(self._homepath):
-            print(f"first create directory {self._homepath} and place webstorage.yml file in there")
-            sys.exit(1)
-        configfile = os.path.join(self._homepath, "webstorage.yml")
-        if os.path.isfile(configfile):
-            with open(configfile, "rt") as infile:
-                self._config = yaml.load(infile.read())
-                # use proxy, if defined in config
-                if "HTTP_PROXY" in self._config:
-                    os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
-                if "HTTPS_PROXY" in self._config:
-                    os.environ["HTTPS_PROXY"] = self._config["HTTPS_PROXY"]
-                self._client = boto3.client(
-                    "s3",
-                    aws_access_key_id=self._config["S3_ACCESS_KEY"],
-                    aws_secret_access_key=self._config["S3_SECRET_KEY"],
-                    endpoint_url=self._config["S3_ENDPOINT_URL"],
-                    use_ssl=self._config["S3_USE_SSL"]
-                    )
-        else:
-            print(f"configuration file {configfile} is missing")
-            sys.exit(2)
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
         self._hashfunc = hashlib.sha1 # TODO: hardcoded or in config?
+        self._checksums = Checksums(os.path.join(self._homepath, "_filestorage_cache.db"))
+        self._logger.info("found %d stored checksums in local cache", len(self._checksums))
         self._get_checksums()
-        self._logger.debug("found %d stored checksums", len(self._checksums))
+        self._logger.info("found %d stored checksums after cache and bucket", len(self._checksums))
 
     @property
     def blockstorage(self):
@@ -69,33 +43,6 @@ class FileStorageClient():
         reference to used BlockStorage
         """
         return self._bs # TODO: is this necessary
-
-    @property
-    def hashfunc(self):
-        """
-        reference to used hashfunc
-        """
-        return self._hashfunc # TODO: is this necessary
-
-    @property
-    def checksums(self):
-        """
-        return ist of checksums
-        """
-        if self._cache and not self._checksums:
-            self._logger.info("getting existing checksums")
-            self._get_checksums()
-        return self._checksums
-
-    def _get_checksums(self):
-        """
-        get list of stored checksums from backend
-        """
-        objects = self._client.list_objects(Bucket=self._bucket_name)
-        if "Contents" in objects: # otherwise this bucket is empty
-            for entry in objects["Contents"]:
-                if entry["Key"] not in self._checksums:
-                    self._checksums.append(entry["Key"])
 
     def put(self, fh, mime_type="application/octet-stream"):
         """
@@ -136,7 +83,7 @@ class FileStorageClient():
         # put file composition into filestorage
         filedigest = filehash.hexdigest()
         metadata["checksum"] = filedigest
-        if self.exists(filedigest) is not True: # check if filehash is already stored
+        if filedigest not in self._checksums: # check if filehash is already stored
             self._logger.debug("storing recipe for filechecksum: %s", filedigest)
             self._put(filedigest, metadata)
             return metadata
@@ -150,11 +97,11 @@ class FileStorageClient():
         :param checksum <str>: hexdigest of checksum
         :param data <dict>: meta data to this checksum
         """
-        if self._cache and checksum in self._checksums:
+        if checksum in self._checksums:
             self._logger.debug("202 - skip this block, checksum is in list of cached checksums")
             return checksum, 202
         self._client.upload_fileobj(BytesIO(json.dumps(data).encode("utf-8")), self._bucket_name, checksum) # TODO: exceptions
-        self._checksums.append(checksum) # add to local cache
+        self._checksums.add(checksum) # add to local cache
         return checksum, 200 # fake
 
     def read(self, checksum):
@@ -181,11 +128,3 @@ class FileStorageClient():
         data = b_buffer.read().decode("utf-8")
         return json.loads(data)
 
-    def exists(self, checksum):
-        """
-        exists method if caching is on
-        if the searched checksum is not available, the filestorage backend is queried
-
-        :param checksum <str>: hexdigest of checksum
-        """
-        return checksum in self._checksums
