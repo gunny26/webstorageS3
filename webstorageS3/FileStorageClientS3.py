@@ -4,15 +4,10 @@
 RestFUL Webclient to use FileStorage WebApp
 """
 import os
-import sys
 import json
 import logging
-import hashlib
+#import hashlib
 from io import BytesIO
-# non std modules
-import yaml
-import boto3
-from botocore.exceptions import ClientError
 # own modules
 from .StorageClientS3 import StorageClient
 from .BlockStorageClientS3 import BlockStorageClient
@@ -31,7 +26,6 @@ class FileStorageClient(StorageClient):
         self._bs = BlockStorageClient(cache=cache)
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
-        self._hashfunc = hashlib.sha1 # TODO: hardcoded or in config?
         self._checksums = Checksums(os.path.join(self._homepath, "_filestorage_cache.db"))
         self._logger.info("found %d stored checksums in local cache", len(self._checksums))
         self._get_checksums()

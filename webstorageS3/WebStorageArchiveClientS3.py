@@ -3,74 +3,24 @@
 """
 RestFUL Webclient to use FileStorage and BlockStorage WebApps
 """
-import os
-import sys
-import re
 import json
 import logging
-import base64
 import gzip
 import hashlib
 from io import BytesIO
-# non std modules
-import yaml
-import boto3
-from botocore.exceptions import ClientError
+# own modules
+from .StorageClientS3 import StorageClient
 
-
-class WebStorageArchiveClient():
+class WebStorageArchiveClient(StorageClient):
     """
     store and retrieve Data, specific for WebStorageArchives
     """
     def __init__(self):
         """__init__"""
+        super(WebStorageArchiveClient, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
-        # according to platform search for config file in home directory
-        if os.name == "nt":
-            self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-        else:
-            self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-        logging.debug("using config directory %s", self._homepath)
-        if not os.path.isdir(self._homepath):
-            print(f"first create directory {self._homepath} and place webstorage.yml file in there")
-            sys.exit(1)
-        configfile = os.path.join(self._homepath, "webstorage.yml")
-        if os.path.isfile(configfile):
-            with open(configfile, "rt") as infile:
-                self._config = yaml.load(infile.read())
-                # use proxy, if defined in config
-                if "HTTP_PROXY" in self._config:
-                    os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
-                if "HTTPS_PROXY" in self._config:
-                    os.environ["HTTPS_PROXY"] = self._config["HTTPS_PROXY"]
-                self._client = boto3.client(
-                    "s3",
-                    aws_access_key_id=self._config["S3_ACCESS_KEY"],
-                    aws_secret_access_key=self._config["S3_SECRET_KEY"],
-                    endpoint_url=self._config["S3_ENDPOINT_URL"],
-                    use_ssl=self._config["S3_USE_SSL"]
-                    )
-        else:
-            print(f"configuration file {configfile} is missing")
-            sys.exit(2)
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
-
-    def _encode(self, msg):
-        """
-        encode some string first to base64, next in hex notation
-        """
-        b64_msg = base64.b64encode(msg.encode("utf-8"))
-        hex_msg = b64_msg.hex()
-        return msg.encode("utf-8").hex()
-
-    def _decode(self, hex_msg):
-        """
-        decode some hex notated string to base64 ascii, next to original message
-        """
-        b64_msg = bytes.fromhex(hex_msg)
-        msg = base64.b64decode(r_filename64).decode("utf-8")
-        return bytes.fromhex(hex_msg).decode("utf-8")
 
     def get_backupsets(self, hostname=None):
         """
@@ -81,13 +31,9 @@ class WebStorageArchiveClient():
         :param hostname <str>: if not given use local hostname
         :return <list>: list of all stored backupsets for this hostname
         """
-        objects = self._client.list_objects(Bucket=self._bucket_name)
-        if "Contents" not in objects: # otherwise this bucket is empty
-            return []
         result = {}
-        rex = re.compile(r"^(.+)_(.+)_(.+)\.wstar\.gz$")
-        for entry in objects["Contents"]:
-            response = self._client.head_object(Bucket=self._bucket_name, Key=entry["Key"]) # TODO: exceptions
+        for key in self._list_objects():  # get keys in bucket
+            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
             size = response['ContentLength']
             if "Metadata" in response and response["Metadata"]:
                 thishostname = response["Metadata"]["hostname"]
@@ -96,16 +42,16 @@ class WebStorageArchiveClient():
                 # 2016-10-25T20:23:17.782902
                 thisdate, thistime = timestamp.split("T")
                 thistime = thistime.split(".")[0]
-                if hostname and hostname != thishostname: # filter only backupsets for this hostname
+                if hostname and hostname != thishostname:  # filter only backupsets for this hostname
                     continue
-                result[entry["Key"]] = {
+                result[key] = {
                     "date": thisdate,
                     "time": thistime,
                     "datetime": timestamp,
                     "size": size,
                     "tag": tag,
                     "hostname": thishostname,
-                    "basename": entry["Key"]
+                    "basename": key
                 }
         # sort by datetime
         return sorted(result.values(), key=lambda a: a["datetime"])
@@ -158,17 +104,19 @@ class WebStorageArchiveClient():
         in_ = BytesIO()
         in_.write(bytes_obj)
         in_.seek(0)
-        with gzip.GzipFile(fileobj=in_, mode='rb') as fo:
-            gunzipped_bytes_obj = fo.read()
+        with gzip.GzipFile(fileobj=in_, mode='rb') as infile:
+            gunzipped_bytes_obj = infile.read()
         return gunzipped_bytes_obj.decode("utf-8")
 
     def save(self, data):
         """
         save data generated by wstar on webstorage
+        data should be some json encodable python object
+        will be encoded in utf-8 before building sha256 checksum
 
         :param data <dict>: information about stored files and directories
         """
-       # build sha256 checksum
+       # build sha256 checksum of data
         sha256 = hashlib.sha256() # TODO: put this in config ?
         sha256.update(json.dumps(data, sort_keys=True).encode("utf-8"))
         data["checksum"] = sha256.hexdigest()

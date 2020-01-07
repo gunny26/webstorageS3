@@ -5,17 +5,17 @@ RestFUL Webclient to use BlockStorage WebApps
 """
 import os
 import sys
-import array
+#import array
 import logging
 import hashlib
-import json
+#import json
 from io import BytesIO
 # non std modules
 import yaml
 import boto3
-from botocore.exceptions import ClientError
+#from botocore.exceptions import ClientError
 # own modules
-from .Checksums import Checksums
+#from .Checksums import Checksums
 
 
 class StorageClient():
@@ -23,9 +23,12 @@ class StorageClient():
 
     def __init__(self):
         self._homepath = None
-        self._config = None
-        self._checksums = None
-        self._logger = None
+        self._config = None # holding yaml cnfig
+        self._checksums = None # checksum cache
+        self._logger = None # logger
+        self._bucket_name = None # bucket_name in S3
+        self._hashfunc = hashlib.sha1 # TODO: hardcoded or in config?
+        self._blocksize = 1024 * 1024 # TODO: hardcoded or in config?
         # according to platform search for config file in home directory
         if os.name == "nt":
             self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
@@ -38,7 +41,7 @@ class StorageClient():
         configfile = os.path.join(self._homepath, "webstorage.yml")
         if os.path.isfile(configfile):
             with open(configfile, "rt") as infile:
-                self._config = yaml.load(infile.read())
+                self._config = yaml.safe_load(infile.read())
                 # use proxy, if defined in config
                 if "HTTP_PROXY" in self._config:
                     os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
@@ -55,47 +58,72 @@ class StorageClient():
             print(f"configuration file {configfile} is missing")
             sys.exit(2)
 
+    @property
+    def hashfunc(self):
+        """ returning used hashfunc """
+        return self._hashfunc
+
+    @property
+    def homepath(self):
+        """where to find config and cache"""
+        return self._homepath
+
+    @property
+    def blocksize(self):
+        """ return blocksize """
+        return self._blocksize
+
+    @property
+    def checksums(self):
+        """ return list of known checksums """
+        return list(self._checksums.checksums())
+
     def __contains__(self, checksum):
         return checksum in self._checksums
 
     def _blockdigest(self, data):
         """
-        single point of digesting return hexdigest of data
+        single point of digesting some data returning hexdigest of data
 
         :param data <bytes>: some data
         """
-        digest = self.hashfunc()
+        digest = self._hashfunc()
         digest.update(data)
         return digest.hexdigest()
 
-    @property
-    def blocksize(self):
+    def _download_fileobj(self, key):
         """
-        return blocksize
-        """
-        return self._blocksize
+        download some data from S3
 
-    @property
-    def checksums(self):
+        :param bucket_name <str>: some existing bucket in S3
+        :param key <str>: key of object in bucket
+        :return <bytes> binary data of object:
         """
-        return list of known checksums
+        b_buffer = BytesIO()
+        self._client.download_fileobj(self._bucket_name, key, b_buffer) # TODO: exceptions
+        b_buffer.seek(0) # do not forget this tiny little line !!
+        return b_buffer.read()
+
+    def _list_objects(self):
         """
-        return self._checksums.checksums()
+        generator to return objects in bucket
+
+        :param bucket <str>: name of bucket
+        :return <generator> of entry["Key"] of objects
+        """
+        paginator = self._client.get_paginator('list_objects')
+        # Create a PageIterator from the Paginator
+        page_iterator = paginator.paginate(Bucket=self._bucket_name)
+        for page in page_iterator:
+            for entry in page["Contents"]:
+                yield entry["Key"]
 
     def _get_checksums(self):
         """
         get list of stored checksums from backend
         """
         # Create a reusable Paginator
-        if len(self._checksums) == 0:
+        if len(self._checksums) == 0: # must be len() to check of no entry
             self._logger.info("no locally stored checksums found, fetching from bucket")
-            paginator = self._client.get_paginator('list_objects')
-            # Create a PageIterator from the Paginator
-            page_iterator = paginator.paginate(Bucket=self._bucket_name)
-            checksums = set()
-            for page in page_iterator:
-                for entry in page["Contents"]:
-                    if entry["Key"] not in self._checksums:
-                        checksums.add(entry["Key"])
-            self._checksums.update(checksums)
+            self._checksums.update(set(self._list_objects()))
         self._logger.info(f"found {len(self._checksums)} existing checksums")

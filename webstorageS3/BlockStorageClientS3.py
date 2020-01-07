@@ -4,16 +4,9 @@
 RestFUL Webclient to use BlockStorage WebApps
 """
 import os
-import sys
-import array
 import logging
-import hashlib
-import json
+#import hashlib
 from io import BytesIO
-# non std modules
-import yaml
-import boto3
-from botocore.exceptions import ClientError
 # own modules
 from .Checksums import Checksums
 from .StorageClientS3 import StorageClient
@@ -31,8 +24,6 @@ class BlockStorageClient(StorageClient):
         super(BlockStorageClient, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
-        self.hashfunc = hashlib.sha1 # TODO: hardcoded or in config?
-        self._blocksize = 1024 * 1024 # TODO: hardcoded or in config?
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._checksums = Checksums(os.path.join(self._homepath, "_blockstorage_cache.db"))
         self._get_checksums()
