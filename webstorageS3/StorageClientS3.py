@@ -21,7 +21,7 @@ import boto3
 class StorageClient():
     """stores chunks of data into BlockStorage"""
 
-    def __init__(self):
+    def __init__(self, s3_backend="DEFAULT"):
         self._homepath = None
         self._config = None # holding yaml cnfig
         self._checksums = None # checksum cache
@@ -41,7 +41,11 @@ class StorageClient():
         configfile = os.path.join(self._homepath, "webstorage.yml")
         if os.path.isfile(configfile):
             with open(configfile, "rt") as infile:
-                self._config = yaml.safe_load(infile.read())
+                try:
+                    self._config = yaml.safe_load(infile.read())["S3Backends"][s3_backend]  # otherwise KeyError - invalid Config
+                except KeyError as exc:
+                    print(f"invalid config file fomat, at least key S3Backends and Subkey DEFAULT must exist")
+                    sys.exit(2)
                 # use proxy, if defined in config
                 if "HTTP_PROXY" in self._config:
                     os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
