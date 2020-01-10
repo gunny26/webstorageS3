@@ -6,7 +6,7 @@ import os
 import logging
 logging.basicConfig(level=logging.INFO)
 # own modules
-from FileStorageClientS3 import FileStorageClient
+from webstorageS3 import FileStorageClient
 
 
 def main():
