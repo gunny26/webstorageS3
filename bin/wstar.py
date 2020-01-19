@@ -246,7 +246,7 @@ def test(filestorage, data, level=0):
     blockset = set() # unique list of blockchecksums
     if level == 0: # check only checksum existance in filestorage
         for absfile, filedata in data["filedata"].items():
-            if filedata["checksum"] in filestorage.exist:
+            if filestorage.exist(filedata["checksum"]):
                 logging.info("FILE-CHECKSUM %s EXISTS  for %s", filedata["checksum"], absfile)
                 filecount += 1
                 fileset.add(filedata["checksum"])
@@ -468,7 +468,7 @@ def main():
     elif args.test:
         if not args.backupset:
             logging.info("using latest backupset, otherwise use --backupset to specify one specific")
-            args.backupset = wsa.get_lastest_backupset()
+            args.backupset = wsa.get_latest_backupset()
         logging.info("testing backupset %s", args.backupset)
         data = get_webstorage_data(args.backupset)
         test(filestorage, data, level=int(args.test_level))

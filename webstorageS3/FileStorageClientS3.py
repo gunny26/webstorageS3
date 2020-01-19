@@ -122,3 +122,13 @@ class FileStorageClient(StorageClient):
         data = b_buffer.read().decode("utf-8")
         return json.loads(data)
 
+    def exist(self, checksum):
+        """
+        return True if checksum is in local cache
+        TODO: also check S3 Backend ?
+
+        :param checksum <str>: hexdigest of checksum
+        :return <bool>: True if checksum also known
+        """
+        return checksum in self._checksums
+
