@@ -468,7 +468,7 @@ def main():
     elif args.test:
         if not args.backupset:
             logging.info("using latest backupset, otherwise use --backupset to specify one specific")
-            args.backupset = wsa.get_latest_backupset()
+            args.backupset = wsa.get_latest_backupset(args.hostname)
         logging.info("testing backupset %s", args.backupset)
         data = get_webstorage_data(args.backupset)
         test(filestorage, data, level=int(args.test_level))
@@ -476,7 +476,7 @@ def main():
     elif args.diff:
         if not args.backupset:
             logging.info("using latest backupset, otherwise use --backupset to specify one specific")
-            args.backupset = wsa.get_latest_backupset()
+            args.backupset = wsa.get_latest_backupset(args.hostname)
         logging.info("creating differential backupset to existing backupset %s", args.backupset)
         data = get_webstorage_data(args.backupset)
         changed = diff(filestorage, data, blacklist_func)

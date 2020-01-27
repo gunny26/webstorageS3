@@ -56,7 +56,7 @@ class WebStorageArchiveClient(StorageClient):
         # sort by datetime
         return sorted(result.values(), key=lambda a: a["datetime"])
 
-    def get_latest_backupset(self, hostname=None):
+    def get_latest_backupset(self, hostname):
         """
         get the latest backupset stored shorthand function to get_backupsets
 
