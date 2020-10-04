@@ -119,8 +119,9 @@ class StorageClient():
         # Create a PageIterator from the Paginator
         page_iterator = paginator.paginate(Bucket=self._bucket_name)
         for page in page_iterator:
-            for entry in page["Contents"]:
-                yield entry["Key"]
+            if page.get("Contents"):
+                for entry in page["Contents"]:
+                    yield entry["Key"]
 
     def _get_checksums(self):
         """
