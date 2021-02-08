@@ -119,11 +119,9 @@ class StorageClient():
         # Create a PageIterator from the Paginator
         page_iterator = paginator.paginate(Bucket=self._bucket_name)
         for page in page_iterator:
-            try:
+            if page.get("Contents"):
                 for entry in page["Contents"]:
                     yield entry["Key"]
-            except KeyError as exc:
-                print(exc)
 
     def _get_checksums(self):
         """
