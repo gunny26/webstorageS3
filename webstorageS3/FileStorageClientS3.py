@@ -26,10 +26,14 @@ class FileStorageClient(StorageClient):
         self._bs = BlockStorageClient(cache=cache)
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
-        self._checksums = Checksums(os.path.join(self._homepath, "_filestorage_cache.db"))
-        self._logger.info("found %d stored checksums in local cache", len(self._checksums))
-        self._get_checksums()
-        self._logger.info("found %d stored checksums after cache and bucket", len(self._checksums))
+        if cache:
+            self._checksums = Checksums(os.path.join(self._homepath, "_filestorage_cache.db"))
+            self._logger.info("found %d stored checksums in local cache", len(self._checksums))
+            self._get_checksums()
+            self._logger.info("found %d stored checksums after cache and bucket", len(self._checksums))
+        else:
+            self._logger.info("cache disabled")
+            self._checksums = set()
 
     @property
     def blockstorage(self):
@@ -122,13 +126,14 @@ class FileStorageClient(StorageClient):
         data = b_buffer.read().decode("utf-8")
         return json.loads(data)
 
-    def exist(self, checksum):
+    def exist(self, checksum, force=False):
         """
         return True if checksum is in local cache
         TODO: also check S3 Backend ?
 
         :param checksum <str>: hexdigest of checksum
+        :param force <bool>:if True check S3 backend
         :return <bool>: True if checksum also known
         """
-        return checksum in self._checksums
+        return self._exist(checksum, force)
 

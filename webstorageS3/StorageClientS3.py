@@ -5,17 +5,14 @@ RestFUL Webclient to use BlockStorage WebApps
 """
 import os
 import sys
-#import array
 import logging
 import hashlib
-#import json
 from io import BytesIO
 # non std modules
 import yaml
 import boto3
-#from botocore.exceptions import ClientError
+import botocore
 # own modules
-#from .Checksums import Checksums
 
 
 class StorageClient():
@@ -132,3 +129,22 @@ class StorageClient():
             self._logger.info("no locally stored checksums found, fetching from bucket")
             self._checksums.update(set(self._list_objects()))
         self._logger.info(f"found {len(self._checksums)} existing checksums")
+
+    def _exist(self, key, force=False):
+        """
+        checking if key exists in bucket if force=True
+        otherwise only checking local stored checksums
+        """
+        if not force:
+            return key in self._checksums
+        try:
+            self._client.head_object(Bucket=self._bucket_name, Key=key)
+            if key not in self._checksums: # add to local cache
+                self._checksums.add(key)
+            return True
+        except botocore.exceptions.ClientError as exc:
+            if exc.response['Error']['Code'] == "404":
+                return False
+            else:
+                # Something else has gone wrong.
+                raise exc

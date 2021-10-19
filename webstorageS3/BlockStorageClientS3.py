@@ -25,9 +25,13 @@ class BlockStorageClient(StorageClient):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
-        self._checksums = Checksums(os.path.join(self._homepath, "_blockstorage_cache.db"))
-        self._get_checksums()
-        self._logger.debug("found %d stored checksums", len(self._checksums))
+        if cache:
+            self._checksums = Checksums(os.path.join(self._homepath, "_blockstorage_cache.db"))
+            self._get_checksums()
+            self._logger.debug("found %d stored checksums", len(self._checksums))
+        else:
+            self._checksums = set()
+            self._logger.info("cache disabled")
 
     @property
     def blocksize(self):
@@ -77,4 +81,15 @@ class BlockStorageClient(StorageClient):
         :param checksum <str>: hexdigest of checksum
         """
         return self.get(checksum, verify=True)
+
+    def exist(self, checksum, force=False):
+        """
+        return True if checksum is in local cache
+        TODO: also check S3 Backend ?
+
+        :param checksum <str>: hexdigest of checksum
+        :param force <bool>:if True check S3 backend
+        :return <bool>: True if checksum also known
+        """
+        return self._exist(checksum, force)
 
