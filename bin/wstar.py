@@ -410,6 +410,8 @@ def main():
     group_test.add_argument("--list-checksums", action="store_true", default=False, help="in conjunction with -list to output also checksums")
     group_test.add_argument("-t", dest="test", action="store_true", help="verify archive, use --backupset to specify one specific")
     group_test.add_argument("--test-level", default=0, help="in conjunction with --test, 0=fast, 1=medium, 2=fully")
+    group_special = parser.add_argument_group("to convert old style archive to newer naming on S3")
+    group_special.add_argument("--convert", action="store_true", help="convert wstar named ba sha256 checksum to newer key format")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-q", "--quiet", action="store_true", help="switch to loglevel ERROR")
     group.add_argument("-v", "--verbose", action="store_true", help="switch to loglevel DEBUG")
@@ -434,8 +436,20 @@ def main():
         args.hostname = socket.gethostname()
     wsa = WebStorageArchiveClient()
     filestorage = FileStorageClient(cache=args.cache)
+    # CONVERT old style archive key naming on s3
+    if args.convert:
+        wsa.convert_keyname()
+        wsa.convert_metadata()
+        #for value in wsa.get_backupsets(args.hostname):
+        #    if re.match("[a-z0-9]{64}", value["basename"]):
+        #        logging.info("%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s", value)
+        #        logging.info(f"converting {value['basename']} to new style key name")
+        #        wsa.convert_keyname(value["basename"])
+        #        # data = get_webstorage_data(filename=value["basename"])
+        #        # logging.debug(json.dumps(data, indent=4))
+        #        # save_webstorage_archive(data)
     # CREATE new Backupset
-    if args.create:
+    elif args.create:
         if not args.tag:
             args.tag = os.path.basename(os.path.dirname(args.create))
         if not os.path.isdir(args.create):
@@ -521,6 +535,7 @@ def main():
         restore_single(filestorage, filedata, args.extract_path, args.name, args.checksum, overwrite=args.overwrite)
     else:
         logging.error("nice, you have started this program without any purpose?")
+
 
 if __name__ == "__main__":
     main()

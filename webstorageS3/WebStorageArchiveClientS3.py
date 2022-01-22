@@ -1,20 +1,26 @@
 #!/usr/bin/python3
 # pylint: disable=line-too-long
+# flake8: disable=line-too-long
 """
 RestFUL Webclient to use FileStorage and BlockStorage WebApps
 """
-import json
-import logging
 import gzip
 import hashlib
 from io import BytesIO
+import json
+import logging
+import re
+# non std modules
+import botocore
 # own modules
 from .StorageClientS3 import StorageClient
+
 
 class WebStorageArchiveClient(StorageClient):
     """
     store and retrieve Data, specific for WebStorageArchives
     """
+
     def __init__(self):
         """__init__"""
         super(WebStorageArchiveClient, self).__init__()
@@ -22,67 +28,7 @@ class WebStorageArchiveClient(StorageClient):
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
 
-    def get_backupsets(self, hostname=None):
-        """
-        get all available backupsets
-        works like directory listing of *.wstar.gz
-        returns data sorted by datetime of filename
-
-        :param hostname <str>: if not given use local hostname
-        :return <list>: list of all stored backupsets for this hostname
-        """
-        result = {}
-        for key in self._list_objects():  # get keys in bucket
-            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
-            size = response['ContentLength']
-            if "Metadata" in response and response["Metadata"]:
-                thishostname = response["Metadata"]["hostname"]
-                tag = response["Metadata"]["tag"]
-                timestamp = response["Metadata"]["datetime"]
-                # 2016-10-25T20:23:17.782902
-                thisdate, thistime = timestamp.split("T")
-                thistime = thistime.split(".")[0]
-                if hostname and hostname != thishostname:  # filter only backupsets for this hostname
-                    continue
-                result[key] = {
-                    "date": thisdate,
-                    "time": thistime,
-                    "datetime": timestamp,
-                    "size": size,
-                    "tag": tag,
-                    "hostname": thishostname,
-                    "basename": key
-                }
-        # sort by datetime
-        return sorted(result.values(), key=lambda a: a["datetime"])
-
-    def get_latest_backupset(self, hostname):
-        """
-        get the latest backupset stored shorthand function to get_backupsets
-
-        :param hostname <str>: hsotname of client
-        :returns <str>: filename of latest stored backupset for this hostname
-        """
-        try:
-            return self.get_backupsets(hostname)[-1]["basename"]
-        except IndexError:
-            pass
-
-    def read(self, filename):
-        """
-        read content of stored WebstorageArchive
-
-        :param filename <str>: filename of archive, will base64 encoded
-        :return <dict>: metadata of archive
-        """
-        b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, filename, b_buffer) # TODO: exceptions
-        b_buffer.seek(0) # do not forget this tiny little line !!
-        gzip_data = b_buffer.read()
-        data = self._gunzip_bytes(gzip_data)
-        return json.loads(data)
-
-    def _gzip_str(self, data):
+    def _gzip_str(self, data: dict):
         """
         gzip some string and return bytes
 
@@ -108,7 +54,76 @@ class WebStorageArchiveClient(StorageClient):
             gunzipped_bytes_obj = infile.read()
         return gunzipped_bytes_obj.decode("utf-8")
 
-    def save(self, data):
+    def get_backupsets(self, hostname: str) -> list:
+        """
+        get all available backupsets
+        works like directory listing of *.wstar.gz
+        returns data sorted by datetime of filename
+
+        :param hostname <str>: if not given use local hostname
+        :return <list>: list of all stored backupsets for this hostname
+        """
+        result = {}
+        for key in self._list_objects():  # get keys in bucket
+            self._logger.error(f"found key {key}")
+            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
+            size = response['ContentLength']
+            # if "Metadata" in response and response["Metadata"]:
+            if response.get("Metadata"):
+                thishostname = response["Metadata"]["hostname"]
+                tag = response["Metadata"]["tag"]
+                timestamp = response["Metadata"]["datetime"]
+                # 2016-10-25T20:23:17.782902
+                thisdate, thistime = timestamp.split("T")
+                thistime = thistime.split(".")[0]
+                if hostname and hostname != thishostname:  # filter only backupsets for this hostname
+                    continue
+                result[key] = {
+                    "date": thisdate,
+                    "time": thistime,
+                    "datetime": timestamp,
+                    "size": size,
+                    "tag": tag,
+                    "hostname": thishostname,
+                    "basename": key
+                }
+        # sort by datetime
+        return sorted(result.values(), key=lambda a: a["datetime"])
+
+    def get_latest_backupset(self, hostname: str) -> str:
+        """
+        get the latest backupset stored shorthand function to get_backupsets
+
+        :param hostname <str>: hsotname of client
+        :returns <str>: filename of latest stored backupset for this hostname
+        """
+        try:
+            return self.get_backupsets(hostname)[-1]["basename"]
+        except IndexError:
+            pass
+
+    @staticmethod
+    def get_key(data: dict) -> str:
+        """
+        return generated keyname from data
+        """
+        return f"{data['hostname']}_{data['datetime']}_{data['tag']}.json.gz"
+
+    def read(self, filename: str) -> dict:
+        """
+        read content of stored WebstorageArchive
+
+        :param filename <str>: filename of archive, will base64 encoded
+        :return <dict>: metadata of archive
+        """
+        b_buffer = BytesIO()
+        self._client.download_fileobj(self._bucket_name, filename, b_buffer)  # TODO: exceptions
+        b_buffer.seek(0)  # do not forget this tiny little line !!
+        gzip_data = b_buffer.read()
+        data = self._gunzip_bytes(gzip_data)
+        return json.loads(data)
+
+    def save(self, data: dict):
         """
         save data generated by wstar on webstorage
         data should be some json encodable python object
@@ -116,19 +131,76 @@ class WebStorageArchiveClient(StorageClient):
 
         :param data <dict>: information about stored files and directories
         """
-       # build sha256 checksum of data
-        sha256 = hashlib.sha256() # TODO: put this in config ?
+        # build sha256 checksum of data
+        sha256 = hashlib.sha256()
         sha256.update(json.dumps(data, sort_keys=True).encode("utf-8"))
         data["checksum"] = sha256.hexdigest()
-        self._logger.info("checksum of archive %s", data["checksum"])
+        self._logger.info(f"checksum of archive {data['checksum']}")
         # store
         extra_args = {
             "Metadata": {
-                "hostname" : data["hostname"],
+                "hostname": data["hostname"],
                 "tag": data["tag"],
                 "datetime": data["datetime"]
             }
         }
+        key = self.get_key(data)  # building key sortable
         # f_object = BytesIO(json.dumps(data).encode("utf-8"))
         f_object = self._gzip_str(json.dumps(data))
-        self._client.upload_fileobj(f_object, self._bucket_name, data["checksum"], ExtraArgs=extra_args)
+        # self._logger.info(f"storing wstar as {data['checksum']}")
+        # self._client.upload_fileobj(f_object, self._bucket_name, data["checksum"], ExtraArgs=extra_args)
+        self._logger.info(f"storing wstar as {key}")
+        self._client.upload_fileobj(f_object, self._bucket_name, key, ExtraArgs=extra_args)
+
+    def delete(self, key: str):
+        """
+        delete some key in bucket, basic S3 function
+        """
+        self._logger.info(f"deleting key {key}")
+        res = self._client.delete_object(Bucket=self._bucket_name, Key=key)
+        self._logger.info(f"result: {res}")
+
+    def exists(self, key: str) -> bool:
+        """
+        checking of some S3 bject exists or not, basic S3 function
+        """
+        try:
+            self._client.head_object(Bucket=self._bucket_name, Key=key)
+            return True
+        except botocore.exceptions.ClientError as exc:
+            if exc.response['Error']['Code'] == "404":
+                return False
+            else:
+                # Something else has gone wrong.
+                raise exc
+
+    def convert_keyname(self):
+        """
+        converting old style SHA256 key naming to human readable object names
+
+        backupset named by there sha256 where made by version 1.2 and earlier
+        """
+        for key in self._list_objects():  # get keys in bucket
+            if re.match("[a-z0-9]{64}", key):  # only sha256 style names
+                self._logger.error(f"converting sha256 keyname {key}")
+                data = self.read(key)
+                newkey = self.get_key(data)
+                self.save(data)
+                if self.exists(newkey):
+                    self.delete(key)
+
+    def convert_metadata(self):
+        """
+        converting backupsets without MetaData to new style backupsets
+
+        backupsets without Metadata where made by version 1.2 and earlier
+        """
+        for key in self._list_objects():  # get keys in bucket
+            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
+            if not response.get("Metadata"):
+                self._logger.error(f"converting adding Metadata to key {key}")
+                data = self.read(key)
+                newkey = self.get_key(data)
+                self.save(data)
+                if self.exists(newkey):
+                    self.delete(key)
