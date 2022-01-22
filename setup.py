@@ -10,6 +10,8 @@ setuptools.setup(
      scripts=["bin/wstar.py", "bin/fget.py", "bin/fput.py", "bin/bstool.py", "bin/fstool.py"] ,
      author="Arthur Messner",
      author_email="arthur.messner@gmail.com",
+     maintainer="Arthur Messner",
+     maintainer_email="arthur.messner@gmail.com",
      description="Backup/Archiving System on S3 Backend",
      long_description=long_description,
      long_description_content_type="text/markdown",
@@ -20,5 +22,6 @@ setuptools.setup(
          "License :: OSI Approved :: MIT License",
          "Operating System :: OS Independent",
      ],
-    install_requires=["requests>=2.22.0", "boto3>=1.9.253", "PyYAML==5.3.1"],
+    requires=["requests", "boto3", "PyYAML"],
+    install_requires=["requests>=2.22.0", "boto3>=1.9.253", "PyYAML>=5.3.1"],
  )
