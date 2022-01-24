@@ -3,9 +3,13 @@ import os
 import sqlite3
 import logging
 
-class Checksums:
 
-    def __init__(self, filename):
+class Checksums:
+    """
+    storing persistent set in sqlite database
+    """
+
+    def __init__(self, filename: str):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._checksums = set()
         self._filename = filename
@@ -31,11 +35,11 @@ class Checksums:
                 self._checksums.add(entry[0])
             self._logger.info("found %d existing checksums", len(self._checksums))
 
-    def checksums(self):
+    def checksums(self) -> list:
         """return <list> copy of actual checksums"""
         return list(self._checksums)
 
-    def update(self, checksums):
+    def update(self, checksums: str):
         """
         import some list of checksums to database and memory
         :param checksums <list>:
@@ -45,7 +49,7 @@ class Checksums:
             self._checksums.add(checksum)
         self._con.commit()
 
-    def add(self, checksum):
+    def add(self, checksum: str):
         """
         add single checksum to set and database
         :param checksum <str>: checksum to store
@@ -59,13 +63,13 @@ class Checksums:
             self._logger.exception(exc)
             self._logger.error("error adding checksum %s to cache", checksum)
 
-    def __contains__(self, checksum):
+    def __contains__(self, checksum: str) -> bool:
         if len(checksum) != 40:
             return False
         return checksum in self._checksums
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._checksums)
 
-    def __iter__(self):
+    def __iter__(self) -> set:
         return self._checksums

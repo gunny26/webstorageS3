@@ -65,7 +65,7 @@ class WebStorageArchiveClient(StorageClient):
         """
         result = {}
         for key in self._list_objects():  # get keys in bucket
-            self._logger.error(f"found key {key}")
+            self._logger.debug(f"found key {key}")
             response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
             size = response['ContentLength']
             # if "Metadata" in response and response["Metadata"]:

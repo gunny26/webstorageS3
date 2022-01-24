@@ -5,7 +5,6 @@ RestFUL Webclient to use BlockStorage WebApps
 """
 import os
 import logging
-#import hashlib
 from io import BytesIO
 # own modules
 from .Checksums import Checksums
@@ -19,6 +18,8 @@ class BlockStorageError(Exception):
 class BlockStorageClient(StorageClient):
     """stores chunks of data into BlockStorage"""
 
+    CACHE_FILENAME = "_blockstorage_cache.db"  # filname to store checksums
+
     def __init__(self, cache=True):
         """__init__"""
         super(BlockStorageClient, self).__init__()
@@ -26,7 +27,7 @@ class BlockStorageClient(StorageClient):
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         if cache:
-            self._checksums = Checksums(os.path.join(self._homepath, "_blockstorage_cache.db"))
+            self._checksums = Checksums(os.path.join(self._homepath, self.CACHE_FILENAME))
             self._get_checksums()
             self._logger.debug("found %d stored checksums", len(self._checksums))
         else:
@@ -47,15 +48,15 @@ class BlockStorageClient(StorageClient):
         :param data <bytes>: arbitrary data up to blocksize long
         :param use_cache <bool>: if checksum already in list of checksums, do not store, otherwise overwrite
         """
-        if len(data) > self.blocksize: # assure maximum length
+        if len(data) > self.blocksize:  # assure maximum length
             raise BlockStorageError("length of providede data (%s) is above maximum blocksize of %s" % (len(data), self.blocksize))
         checksum = self._blockdigest(data)
         if use_cache and checksum in self._checksums:
             self._logger.debug("202 - skip this block, checksum is in list of cached checksums")
             return checksum, 202
-        self._client.upload_fileobj(BytesIO(data), self._bucket_name, checksum) # TODO: exceptions
-        self._checksums.add(checksum) # add to local cache
-        return checksum, 200 # fake
+        self._client.upload_fileobj(BytesIO(data), self._bucket_name, checksum)  # TODO: exceptions
+        self._checksums.add(checksum)  # add to local cache
+        return checksum, 200  # fake
 
     def get(self, checksum, verify=False):
         """
@@ -66,8 +67,8 @@ class BlockStorageClient(StorageClient):
         :param verify <bool>: to verify checksum locally, or not
         """
         b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, checksum, b_buffer) # TODO: exceptions
-        b_buffer.seek(0) # do not forget this tiny little line !!
+        self._client.download_fileobj(self._bucket_name, checksum, b_buffer)  # TODO: exceptions
+        b_buffer.seek(0)  # do not forget this tiny little line !!
         data = b_buffer.read()
         if verify:
             if checksum != self._blockdigest(data):
@@ -93,3 +94,12 @@ class BlockStorageClient(StorageClient):
         """
         return self._exist(checksum, force)
 
+    def purge_cache(self):
+        """
+        delete locally cached checksums
+        """
+        cache_filename = os.path.join(self._homepath, self.CACHE_FILENAME)
+        self._logger.info(f"deleting local cached checksum database in file {cache_filename}")
+        del(self._checksums)  # to close database and release file
+        os.unlink(cache_filename)
+        self._checksums = Checksums(cache_filename)

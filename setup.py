@@ -6,8 +6,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='webstorageS3',
-     version='1.3.4.3',
-     scripts=["bin/wstar.py", "bin/fget.py", "bin/fput.py", "bin/bstool.py", "bin/fstool.py"] ,
+     version='1.3.4.10',
+     scripts=["bin/wstar.py", "bin/fget.py", "bin/fput.py", "bin/bstool.py", "bin/fstool.py"],
      author="Arthur Messner",
      author_email="arthur.messner@gmail.com",
      maintainer="Arthur Messner",
@@ -23,5 +23,5 @@ setuptools.setup(
          "Operating System :: OS Independent",
      ],
     requires=["requests", "boto3", "PyYAML"],
-    install_requires=["requests>=2.22.0", "boto3>=1.9.253", "PyYAML>=5.3.1"],
+    install_requires=["requests>=2.22.0", "boto3>=1.9.253", "PyYAML>=5.4"],
  )

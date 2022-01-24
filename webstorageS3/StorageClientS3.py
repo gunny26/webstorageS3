@@ -12,7 +12,6 @@ from io import BytesIO
 import yaml
 import boto3
 import botocore
-# own modules
 
 
 class StorageClient():
@@ -20,12 +19,12 @@ class StorageClient():
 
     def __init__(self, s3_backend="DEFAULT"):
         self._homepath = None
-        self._config = None # holding yaml cnfig
-        self._checksums = None # checksum cache
-        self._logger = None # logger
-        self._bucket_name = None # bucket_name in S3
-        self._hashfunc = hashlib.sha1 # TODO: hardcoded or in config?
-        self._blocksize = 1024 * 1024 # TODO: hardcoded or in config?
+        self._config = None  # holding yaml cnfig
+        self._checksums = None  # checksum cache
+        self._logger = None  # logger
+        self._bucket_name = None   # bucket_name in S3
+        self._hashfunc = hashlib.sha1  # TODO: hardcoded or in config?
+        self._blocksize = 1024 * 1024  # TODO: hardcoded or in config?
         # according to platform search for config file in home directory
         if os.name == "nt":
             self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
@@ -40,7 +39,7 @@ class StorageClient():
             with open(configfile, "rt") as infile:
                 try:
                     self._config = yaml.safe_load(infile.read())["S3Backends"][s3_backend]  # otherwise KeyError - invalid Config
-                except KeyError as exc:
+                except KeyError:
                     print(f"invalid config file fomat, at least key S3Backends and Subkey DEFAULT must exist")
                     sys.exit(2)
                 # use proxy, if defined in config
@@ -101,8 +100,8 @@ class StorageClient():
         :return <bytes> binary data of object:
         """
         b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, key, b_buffer) # TODO: exceptions
-        b_buffer.seek(0) # do not forget this tiny little line !!
+        self._client.download_fileobj(self._bucket_name, key, b_buffer)  # TODO: exceptions
+        b_buffer.seek(0)  # do not forget this tiny little line !!
         return b_buffer.read()
 
     def _list_objects(self):
@@ -125,9 +124,10 @@ class StorageClient():
         get list of stored checksums from backend
         """
         # Create a reusable Paginator
-        if len(self._checksums) == 0: # must be len() to check of no entry
-            self._logger.info("no locally stored checksums found, fetching from bucket")
-            self._checksums.update(set(self._list_objects()))
+        # TODO: put this in special function if necessary
+        # if len(self._checksums) == 0:  # must be len() to check of no entry
+        #     self._logger.info("no locally stored checksums found, fetching from bucket")
+        #     self._checksums.update(set(self._list_objects()))
         self._logger.info(f"found {len(self._checksums)} existing checksums")
 
     def _exist(self, key, force=False):
@@ -139,7 +139,7 @@ class StorageClient():
             return key in self._checksums
         try:
             self._client.head_object(Bucket=self._bucket_name, Key=key)
-            if key not in self._checksums: # add to local cache
+            if key not in self._checksums:  # add to local cache
                 self._checksums.add(key)
             return True
         except botocore.exceptions.ClientError as exc:
