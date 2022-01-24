@@ -6,6 +6,8 @@ command line program to create/restore/test WebStorageArchives
 """
 import os
 import datetime
+import gzip
+import json
 import time
 import sys
 import socket
@@ -396,32 +398,74 @@ def get_webstorage_data(filename: str) -> dict:
     return wsa.read(filename)
 
 
+def import_archive(filename: str, delete: bool = False, check: bool = True):
+    """
+    importing some archive in json.gz into central archive
+    """
+    wsa = WebStorageArchiveClient()
+    exists = False
+    if not os.path.isfile(filename):
+        logging.error(f"file {filename} does not exist")
+        sys.exit(1)
+    with gzip.open(filename, "rt") as infile:
+        data = json.loads(infile.read())
+        key = wsa.get_key(data)
+        if wsa.exists(key):
+            logging.info(f"data already exist in archive {key}")
+            logging.info(f"local checksum {data['checksum']}")
+            logging.info(f"local number of files {len(data['filedata'])}")
+            remote_data = wsa.read(key)
+            logging.info(f"remote checksum {remote_data['checksum']}")
+            logging.info(f"remote number of files {len(remote_data['filedata'])}")
+            exists = True
+        else:
+            logging.info("archive does not exist, data will be analyzed")
+            if check:
+                for filename, filedata in data["filedata"].items():
+                    logging.info("{filename} : {filestorage.exists(filedata['checksum'])}")
+    if exists and delete:
+        logging.info(f"deleting file {filename}")
+        os.unlink(filename)
+
+
+def export_archive(archive_name: str):
+    """
+    exporting archive from central storage to filesystem
+    """
+    wsa = WebStorageArchiveClient()
+    data = wsa.read(archive_name)
+    with gzip.open(archive_name, "wt") as outfile:
+        outfile.write(json.dumps(data))
+
+
 def main():
     """
     get options, then call specific functions
     """
     parser = argparse.ArgumentParser(description="create/manage/restore WebStorage Archives")
+    parser.add_argument("name", nargs="*", help="filename or archive name or path")
 
     group_create = parser.add_argument_group("create backupset from scratch")
-    group_create.add_argument("-c", dest="create", help="create archive of this path")
+    group_create.add_argument("-c", "--create", action="store_true", help="create archive of this name")
 
     group_diff = parser.add_argument_group("create incremental backupset, some pre existing backupset must exist")
     group_diff.add_argument("-d", dest="diff", action="store_true", help="create differential to latest or given backupset name")
 
     group_extract = parser.add_argument_group("extract archive")
     group_extract.add_argument("-x", dest="extract", action="store_true", help="restore content of backupset to path location")
-    group_extract.add_argument("--backupset", help="backupset to get from backend, if not given use the latest available backupset")
+    # group_extract.add_argument("--backupset", help="backupset to get from backend, if not given use the latest available backupset")
     group_extract.add_argument("--overwrite", action="store_true", default=False, help="overwrite existing files during restore default %(default)s")
-    group_extract.add_argument("--extract-path", help="path to restore to")
+    # group_extract.add_argument("--extract-path", help="path to restore to")
 
-    group_get = parser.add_argument_group("get single file from backupset")
-    group_get.add_argument("-g", dest="get", action="store_true", help="get single files from backupset")
-    group_get.add_argument("--checksum", help="file checksum")
-    group_get.add_argument("--name", help="file checksum")
+    group_get = parser.add_argument_group("Extract single file from backupset")
+    group_get.add_argument("-X", dest="extract_file", action="store_true", help="extract single files from backupset")
+    # group_get.add_argument("--checksum", help="file checksum")
+    # group_get.add_argument("--name", help="file checksum")
 
     group_test = parser.add_argument_group("testing of backupsets and retrieving existing archive informations")
     group_test.add_argument("-l", dest="list", action="store_true", help="list backupsets, use --backupset to specify one specific")
-    group_test.add_argument("--list-checksums", action="store_true", default=False, help="in conjunction with -list to output also checksums")
+    group_test.add_argument("-L", dest="list_content", action="store_true", help="list content of backupset")
+    group_test.add_argument("--list-checksums", action="store_true", default=False, help="in conjunction with -L to output also checksums")
     group_test.add_argument("-t", dest="test", action="store_true", help="verify archive, use --backupset to specify one specific")
     group_test.add_argument("--test-level", default=0, help="in conjunction with --test, 0=fast, 1=medium, 2=fully")
 
@@ -434,6 +478,8 @@ def main():
     group_special = parser.add_argument_group("some special functions")
     group_special.add_argument("--convert", action="store_true", help="convert wstar named ba sha256 checksum to newer key format")
     group_special.add_argument("--purge-cache", action="store_true", help="purge locally stored checksums database")
+    group_special.add_argument("--import-archive", action="store_true", help="import archive from this local file")
+    group_special.add_argument("--export-archive", action="store_true", help="export archive from storage to local directory")
 
     group_output = parser.add_mutually_exclusive_group()
     group_output.add_argument("-q", "--quiet", action="store_true", help="switch to loglevel ERROR")
@@ -464,18 +510,37 @@ def main():
     if args.convert:
         wsa.convert_keyname()
         wsa.convert_metadata()
+    # EXPORT Archive
+    elif args.export_archive:
+        if not args.name[0]:
+            logging.error("archive name missing")
+            sys.exit(1)
+        archive_name = args.name[0]
+        export_archive(archive_name)
+    # IMPORT Archive
+    elif args.import_archive:
+        if not args.name[0]:
+            logging.error("local archive filename missing")
+            sys.exit(1)
+        import_filename = args.name[0]
+        import_archive(import_filename)
+    # PURGE Cache
     elif args.purge_cache:
         filestorage.purge_cache()  # will also purge BlockstorageCache
     # CREATE new Backupset
     elif args.create:
-        if not args.tag:
-            args.tag = os.path.basename(os.path.dirname(args.create))
-        if not os.path.isdir(args.create):
-            logging.error("%s does not exist", args.create)
+        if not args.name[0]:
+            logging.error("local pathname missing")
             sys.exit(1)
+        create_path = args.name[0]
+        if not os.path.isdir(create_path):
+            logging.error(f"{create_path} does not exist")
+            sys.exit(1)
+        if not args.tag:
+            args.tag = os.path.basename(os.path.dirname(create_path))
         # create
-        logging.info("archiving content of %s", args.create)
-        data = create(filestorage, args.create, blacklist_func, args.tag)
+        logging.info(f"archiving content of {create_path}")
+        data = create(filestorage, create_path, blacklist_func, args.tag)
         save_webstorage_archive(data)
     # LIST Backupsets
     elif args.list:
@@ -496,21 +561,43 @@ def main():
                     list_content(data)
             else:
                 logging.info("backupset not found found")
+    # LIST Content of Archive
+    elif args.list_content:
+        if not args.name[0]:
+            logging.error("archive name missing")
+            sys.exit(1)
+        archive_name = args.name[0]
+        args.cache = False  # set this explicit, not useful
+        logging.info(f"getting archive {archive_name}")
+        data = get_webstorage_data(archive_name)
+        if data is not None:
+            if args.list_checksums is True:
+                for absfile in sorted(data["filedata"].keys()):
+                    filedata = data["filedata"][absfile]
+                    logging.info(f"{filedata['checksum']} {absfile}")
+            else:
+                list_content(data)
+        else:
+            logging.info("archive not found")
     # TEST Backupset
     elif args.test:
-        if not args.backupset:
-            logging.info("using latest backupset, otherwise use --backupset to specify one specific")
-            args.backupset = wsa.get_latest_backupset(args.hostname)
-        logging.info("testing backupset %s", args.backupset)
-        data = get_webstorage_data(args.backupset)
+        if not args.name:
+            logging.info("using latest backupset, otherwise specify archive name")
+            archive_name = wsa.get_latest_backupset(args.hostname)
+        else:
+            archive_name = args.name[0]
+        logging.info(f"testing backupset {archive_name}")
+        data = get_webstorage_data(archive_name)
         test(filestorage, data, level=int(args.test_level))
     # DIFFERENTIAL Backupset
     elif args.diff:
-        if not args.backupset:
-            logging.info("using latest backupset, otherwise use --backupset to specify one specific")
-            args.backupset = wsa.get_latest_backupset(args.hostname)
-        logging.info("creating differential backupset to existing backupset %s", args.backupset)
-        data = get_webstorage_data(args.backupset)
+        if not args.name:
+            logging.info("using latest backupset, otherwise specify archive name")
+            archive_name = wsa.get_latest_backupset(args.hostname)
+        else:
+            archive_name = args.name[0]
+        logging.info(f"creating differential backupset to existing backupset {archive_name}")
+        data = get_webstorage_data(archive_name)
         changed = diff(filestorage, data, blacklist_func)
         if changed is False:
             logging.info("Nothing changed")
@@ -518,39 +605,37 @@ def main():
             save_webstorage_archive(data)
     # EXTRACT Backupset to path
     elif args.extract:
-        if args.extract_path is None:
-            logging.error("you have to provide some path to restore to with parameter -p")
+        # -x <archive_name> <destination_path>
+        if len(args.name) != 2:
+            logging.error("you have to provide first archive name and second destination path")
             sys.exit(1)
-        if not os.path.isdir(args.extract_path):
-            logging.error("folder %s to restore to does not exist", args.extract_path)
+        archive_name = args.name[0]
+        destination_path = args.name[1]
+        if not os.path.isdir(destination_path):
+            logging.error(f"folder {destination_path} to restore to does not exist")
             sys.exit(1)
-        if not args.backupset:  # to prevent accidentially restores
-            logging.info("you have to specify --backupset explicitly")
-            sys.exit(1)
-        data = get_webstorage_data(args.backupset)
-        restore(filestorage, data, args.extract_path, overwrite=args.overwrite)
+        logging.info("restoring {archive_name} to {destination_path}")
+        data = get_webstorage_data(archive_name)
+        restore(filestorage, data, destination_path, overwrite=args.overwrite)
     # GET Backupset to path
-    elif args.get:
-        if args.extract_path is None:
-            logging.error("you have to provide some path to restore file to with -p")
+    elif args.extract_file:
+        # -X  <archive_name> <destination_path> <filename in archive>
+        if len(args.name) != 3:
+            logging.error("you have to provide first archive name and second destination path and third checksum to restore")
             sys.exit(1)
-        if not os.path.isdir(args.extract_path):
-            logging.error("folder %s to restore file does not exist", args.extract_path)
+        archive_name = args.name[0]
+        destination_path = args.name[1]
+        filename = args.name[2]
+        if not os.path.isdir(destination_path):
+            logging.error(f"folder {destination_path} to restore file does not exist")
             sys.exit(1)
-        if not args.backupset:  # to prevent accidentially restores
-            logging.info("you have to specify --backupset explicitly")
-            sys.exit(1)
-        if not args.name or not args.checksum:
-            logging.info("you have to provide both --name and --checksum")
-        data = get_webstorage_data(args.backupset)
-        if args.name not in data["filedata"]:
-            logging.error("provided --name %s does not exist in backupset")
+        data = get_webstorage_data(archive_name)
+        if filename not in data["filedata"]:
+            logging.error(f"provided filename {filename} does not exist in backupset")
             sys.exit(2)
-        filedata = data["filedata"][args.name]
-        if args.checksum != filedata["checksum"]:
-            logging.error("provided --checksum %s does not match stored checksum")
-            sys.exit(2)
-        restore_single(filestorage, filedata, args.extract_path, args.name, args.checksum, overwrite=args.overwrite)
+        filedata = data["filedata"][filename]
+        checksum = filedata["checksum"]
+        restore_single(filestorage, filedata, destination_path, filename, checksum, overwrite=args.overwrite)
     else:
         logging.error("nice, you have started this program without any purpose?")
 

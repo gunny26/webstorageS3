@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='webstorageS3',
-     version='1.3.4.10',
+     version='1.3.4.11',
      scripts=["bin/wstar.py", "bin/fget.py", "bin/fput.py", "bin/bstool.py", "bin/fstool.py"],
      author="Arthur Messner",
      author_email="arthur.messner@gmail.com",
