@@ -544,30 +544,16 @@ def main():
         save_webstorage_archive(data)
     # LIST Backupsets
     elif args.list:
-        args.cache = False  # set this explicit, not useful
+        # -l
         # list all available backupsets
-        if not args.backupset:  # list all available
-            for value in wsa.get_backupsets(args.hostname):
-                logging.info("%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s", value)
-        else:  # list content of specific backupset
-            logging.info("getting backupset %s", args.backupset)
-            data = get_webstorage_data(args.backupset)
-            if data is not None:
-                if args.list_checksums is True:
-                    for absfile in sorted(data["filedata"].keys()):
-                        filedata = data["filedata"][absfile]
-                        logging.info("%s %s", filedata["checksum"], absfile)
-                else:
-                    list_content(data)
-            else:
-                logging.info("backupset not found found")
+        for value in wsa.get_backupsets(args.hostname):
+            logging.info("%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s", value)
     # LIST Content of Archive
     elif args.list_content:
         if not args.name[0]:
             logging.error("archive name missing")
             sys.exit(1)
         archive_name = args.name[0]
-        args.cache = False  # set this explicit, not useful
         logging.info(f"getting archive {archive_name}")
         data = get_webstorage_data(archive_name)
         if data is not None:
