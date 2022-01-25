@@ -1,1 +1,3 @@
-boto3>=1.10
+requests>=2.22.0
+boto3>=1.9.253
+PyYAML>=5.4
