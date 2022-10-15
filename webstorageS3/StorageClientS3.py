@@ -17,7 +17,7 @@ import botocore
 class StorageClient():
     """stores chunks of data into BlockStorage"""
 
-    def __init__(self, s3_backend="DEFAULT"):
+    def __init__(self, s3_backend="DEFAULT", homepath=None):
         self._homepath = None
         self._config = None  # holding yaml cnfig
         self._checksums = None  # checksum cache
@@ -25,15 +25,21 @@ class StorageClient():
         self._bucket_name = None   # bucket_name in S3
         self._hashfunc = hashlib.sha1  # TODO: hardcoded or in config?
         self._blocksize = 1024 * 1024  # TODO: hardcoded or in config?
+
         # according to platform search for config file in home directory
-        if os.name == "nt":
-            self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
+        if not homepath:
+            if os.name == "nt":
+                self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
+            else:
+                self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
+            logging.debug("using config directory %s", self._homepath)
+            if not os.path.isdir(self._homepath):
+                print(f"first create directory {self._homepath} and place webstorage.yml file in there")
+                sys.exit(1)
         else:
-            self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-        logging.debug("using config directory %s", self._homepath)
-        if not os.path.isdir(self._homepath):
-            print(f"first create directory {self._homepath} and place webstorage.yml file in there")
-            sys.exit(1)
+            self._homepath = homepath
+
+        # checking configfile
         configfile = os.path.join(self._homepath, "webstorage.yml")
         if os.path.isfile(configfile):
             with open(configfile, "rt") as infile:
@@ -53,7 +59,7 @@ class StorageClient():
                     aws_secret_access_key=self._config["S3_SECRET_KEY"],
                     endpoint_url=self._config["S3_ENDPOINT_URL"],
                     use_ssl=self._config["S3_USE_SSL"]
-                    )
+                )
         else:
             print(f"configuration file {configfile} is missing")
             sys.exit(2)
