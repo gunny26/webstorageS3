@@ -20,16 +20,16 @@ class BlockStorageClient(StorageClient):
 
     CACHE_FILENAME = "_blockstorage_cache.db"  # filname to store checksums
 
-    def __init__(self, cache=True):
+    def __init__(self, cache=True, homepath=None):
         """__init__"""
-        super(BlockStorageClient, self).__init__()
+        super(BlockStorageClient, self).__init__(cache, homepath)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
-        self._logger.debug("bucket list: %s", self._client.list_buckets())
+        self._logger.debug(f"bucket list: {self._client.list_buckets()}")
         if cache:
             self._checksums = Checksums(os.path.join(self._homepath, self.CACHE_FILENAME))
             self._get_checksums()
-            self._logger.debug("found %d stored checksums", len(self._checksums))
+            self._logger.debug("found {len(self._checksums)} stored checksums")
         else:
             self._checksums = set()
             self._logger.info("cache disabled")

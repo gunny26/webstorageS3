@@ -18,7 +18,6 @@ class StorageClient():
     """stores chunks of data into BlockStorage"""
 
     def __init__(self, s3_backend="DEFAULT", homepath=None):
-        self._homepath = None
         self._config = None  # holding yaml cnfig
         self._checksums = None  # checksum cache
         self._logger = None  # logger
@@ -27,6 +26,7 @@ class StorageClient():
         self._blocksize = 1024 * 1024  # TODO: hardcoded or in config?
 
         # according to platform search for config file in home directory
+        self._homepath = None
         if not homepath:
             if os.name == "nt":
                 self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")

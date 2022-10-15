@@ -21,9 +21,9 @@ class FileStorageClient(StorageClient):
 
     CACHE_FILENAME = "_filestorage_cache.db"  # filname to store checksums
 
-    def __init__(self, cache=True):
+    def __init__(self, cache=True, homepath=None):
         """__init__"""
-        super(FileStorageClient, self).__init__()
+        super(FileStorageClient, self).__init__(cache, homepath)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bs = BlockStorageClient(cache=cache)
         self._logger.debug("bucket list: %s", self._client.list_buckets())

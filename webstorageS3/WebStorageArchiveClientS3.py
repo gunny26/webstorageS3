@@ -21,9 +21,9 @@ class WebStorageArchiveClient(StorageClient):
     store and retrieve Data, specific for WebStorageArchives
     """
 
-    def __init__(self):
+    def __init__(self, homepath=None):
         """__init__"""
-        super(WebStorageArchiveClient, self).__init__()
+        super(WebStorageArchiveClient, self).__init__(homepath)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
