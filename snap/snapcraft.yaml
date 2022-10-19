@@ -44,7 +44,8 @@ apps:
 
 parts:
   webstorages3:
-    source: https://github.com/gunny26/webstorageS3.git
+    # source: https://github.com/gunny26/webstorageS3.git
+    source: ./
     plugin: python
 #    python-version: python3
 #    build-packages:

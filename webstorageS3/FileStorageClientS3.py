@@ -25,7 +25,7 @@ class FileStorageClient(StorageClient):
         """__init__"""
         super(FileStorageClient, self).__init__(homepath=homepath, s3_backend=s3_backend)
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._bs = BlockStorageClient(cache=cache)
+        self._bs = BlockStorageClient(cache=cache, homepath=homepath, s3_backend=s3_backend)
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
         if cache:
