@@ -20,9 +20,9 @@ class BlockStorageClient(StorageClient):
 
     CACHE_FILENAME = "_blockstorage_cache.db"  # filname to store checksums
 
-    def __init__(self, cache=True, homepath=None):
+    def __init__(self, cache=True, homepath=None, s3_backend="DEFAULT"):
         """__init__"""
-        super(BlockStorageClient, self).__init__(cache, homepath)
+        super(BlockStorageClient, self).__init__(homepath=homepath, s3_backend=s3_backend)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
         self._logger.debug(f"bucket list: {self._client.list_buckets()}")

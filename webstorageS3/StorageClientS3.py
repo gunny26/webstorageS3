@@ -13,11 +13,16 @@ import yaml
 import boto3
 import botocore
 
+logger = logging.getLogger("StorageClient")
+
 
 class StorageClient():
     """stores chunks of data into BlockStorage"""
 
-    def __init__(self, s3_backend="DEFAULT", homepath=None):
+    def __init__(self, homepath=None, s3_backend="DEFAULT"):
+        logger.debug(f"s3_backend = {s3_backend}")
+        logger.debug(f"homepath   = {homepath}")
+
         self._config = None  # holding yaml cnfig
         self._checksums = None  # checksum cache
         self._logger = None  # logger
@@ -32,21 +37,24 @@ class StorageClient():
                 self._homepath = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
             else:
                 self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-            logging.debug("using config directory %s", self._homepath)
-            if not os.path.isdir(self._homepath):
-                print(f"first create directory {self._homepath} and place webstorage.yml file in there")
-                sys.exit(1)
         else:
             self._homepath = homepath
+        logger.debug(f"using config directory {self._homepath}")
+        if not os.path.isdir(self._homepath):
+            logger.error(f"create directory {self._homepath} and place webstorage.yml file in there")
+            sys.exit(1)
 
         # checking configfile
         configfile = os.path.join(self._homepath, "webstorage.yml")
         if os.path.isfile(configfile):
             with open(configfile, "rt") as infile:
                 try:
-                    self._config = yaml.safe_load(infile.read())["S3Backends"][s3_backend]  # otherwise KeyError - invalid Config
-                except KeyError:
-                    print(f"invalid config file fomat, at least key S3Backends and Subkey DEFAULT must exist")
+                    data = yaml.safe_load(infile.read())
+                    logger.debug(yaml.dump(data, indent=2))
+                    self._config = data["S3Backends"][s3_backend]  # otherwise KeyError - invalid Config
+                except KeyError as exc:
+                    logger.exception(exc)
+                    logger.error(f"invalid config file format, at least key S3Backends and Subkey DEFAULT must exist")
                     sys.exit(2)
                 # use proxy, if defined in config
                 if "HTTP_PROXY" in self._config:
@@ -61,7 +69,7 @@ class StorageClient():
                     use_ssl=self._config["S3_USE_SSL"]
                 )
         else:
-            print(f"configuration file {configfile} is missing")
+            logger.error(f"configuration file {configfile} is missing")
             sys.exit(2)
 
     @property

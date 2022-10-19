@@ -22,6 +22,12 @@ from webstorageS3 import WebStorageArchiveClient, FileStorageClient
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
 
+# according to platform search for config file in home directory
+if os.name == "nt":
+    HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
+else:
+    HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
+
 
 def filemode(st_mode):
     """
@@ -382,7 +388,7 @@ def save_webstorage_archive(data: dict):
     duration = data["stoptime"] - data["starttime"]
     logging.info("duration %0.2f s, bandwith %s /s", duration, sizeof_fmt(data["totalsize"] / duration))
     logging.info("%(totalcount)d files of %(totalsize)s bytes size", data)
-    wsa = WebStorageArchiveClient()
+    # wsa = WebStorageArchiveClient()
     wsa.save(data)
     return
 
@@ -394,7 +400,7 @@ def get_webstorage_data(filename: str) -> dict:
     public_key ... path to public key file, to verify signature, if present
     filename ... to name a file, or otherwise use the latest available backupset
     """
-    wsa = WebStorageArchiveClient()
+    # wsa = WebStorageArchiveClient()
     return wsa.read(filename)
 
 
@@ -402,7 +408,7 @@ def import_archive(filename: str, delete: bool = False, check: bool = True):
     """
     importing some archive in json.gz into central archive
     """
-    wsa = WebStorageArchiveClient()
+    # wsa = WebStorageArchiveClient()
     exists = False
     if not os.path.isfile(filename):
         logging.error(f"file {filename} does not exist")
@@ -432,7 +438,7 @@ def export_archive(archive_name: str):
     """
     exporting archive from central storage to filesystem
     """
-    wsa = WebStorageArchiveClient()
+    # wsa = WebStorageArchiveClient()
     data = wsa.read(archive_name)
     with gzip.open(archive_name, "wt") as outfile:
         outfile.write(json.dumps(data))
@@ -442,8 +448,12 @@ def main():
     """
     get options, then call specific functions
     """
-    parser = argparse.ArgumentParser(description="create/manage/restore WebStorage Archives")
+    parser = argparse.ArgumentParser(
+        description="create/manage/restore WebStorage Archives",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument("name", nargs="*", help="filename or archive name or path")
+    parser.add_argument("--homepath", default=HOMEPATH, help="path to config directory")
 
     group_create = parser.add_argument_group("create backupset from scratch")
     group_create.add_argument("-c", "--create", action="store_true", help="create archive of this name")
@@ -504,8 +514,8 @@ def main():
     #
     if not args.hostname:
         args.hostname = socket.gethostname()
-    wsa = WebStorageArchiveClient()
-    filestorage = FileStorageClient(cache=args.cache)
+    wsa = WebStorageArchiveClient(homepath=args.homepath)
+    filestorage = FileStorageClient(cache=args.cache, homepath=args.homepath)
     # CONVERT old style archive key naming on s3
     if args.convert:
         wsa.convert_keyname()
