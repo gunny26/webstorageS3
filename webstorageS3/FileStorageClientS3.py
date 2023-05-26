@@ -38,9 +38,6 @@ class FileStorageClient(StorageClient):
             if not os.path.isdir(subdir):
                 os.mkdir(subdir)
             self._cache = Checksums(self._cache_filename)
-            self._logger.info(
-                "found %d stored checksums in local cache", len(self._cache)
-            )
         else:
             self._logger.info("persistend cache disabled, only memory cache active")
             self._cache = set()

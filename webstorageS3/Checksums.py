@@ -13,9 +13,8 @@ class Checksums:
         self._logger = logging.getLogger(self.__class__.__name__)
         self._checksums = set()
         self._filename = filename
-        self._logger.info("using filename %s", filename)
         if not os.path.isfile(filename):
-            self._logger.info("creating empty database")
+            self._logger.debug(f"creating empty database {filename}")
             self._con = sqlite3.connect(filename)
             self._cur = self._con.cursor()
             sqlstring = """
@@ -24,7 +23,7 @@ class Checksums:
             """
             self._cur.execute(sqlstring)
         else:
-            self._logger.info("using existing database")
+            self._logger.debug(f"using existing database {filename}")
             self._con = sqlite3.connect(filename)
             self._cur = self._con.cursor()
             sqlstring = """
@@ -33,7 +32,7 @@ class Checksums:
             result = self._cur.execute(sqlstring)
             for entry in result:
                 self._checksums.add(entry[0])
-            self._logger.info(f"loaded {len(self._checksums)} existing checksums")
+            self._logger.info(f"loaded {len(self._checksums)} checksums from cache")
 
     def update(self, checksums: str):
         """

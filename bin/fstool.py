@@ -129,6 +129,23 @@ def main():
 
             client_target._put(checksum, data)
 
+    if args.list:
+        client = FileStorageClient(
+            homepath=args.homepath, cache=args.cache, s3_backend=args.backend
+        )
+        logging.info("checking all stored checksum, this could take some time")
+        # {
+        #   'Key': '00b8abb14057692f7b6b272af1406b340392454c',
+        #   'LastModified': datetime.datetime(2023, 4, 5, 12, 18, 7, tzinfo=tzutc()),
+        #   'ETag': '"2489cb415910191739b6633dc1e3e287"',
+        #   'Size': 1048576,
+        #   'StorageClass': 'STANDARD',
+        #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
+        # }
+        for checksum in client.list():
+            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FileStorageClient Tool")
@@ -159,6 +176,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--infile",
         help="file to read and store content in FileStorage",
+    )
+    parser.add_argument(
+        "--list",
+        default=False,
+        action="store_true",
+        help="listing stored files in FileStorage",
     )
     parser.add_argument(
         "--target-backend", help="target s3 backend for copy and sync operations"

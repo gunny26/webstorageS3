@@ -39,9 +39,6 @@ class BlockStorageClient(StorageClient):
             if not os.path.isdir(subdir):
                 os.mkdir(subdir)
             self._cache = Checksums(self._cache_filename)
-            self._logger.debug(
-                "found {len(self._cache)} stored checksums in persistent cache"
-            )
         else:
             self._cache = set()
             self._logger.info("persistent cache disabled")
