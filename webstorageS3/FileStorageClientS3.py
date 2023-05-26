@@ -34,20 +34,6 @@ class FileStorageClient(StorageClient):
 
         self._check_bucket()
         self._init_cache(cache, "filestorage")
-        # if self._bucket_name not in self._client.list_buckets():
-        #    self._logger.error(f"Bucket {self._bucket_name} does not exist")
-        #    self._logger.debug(f"list of buckets {self._client.list_buckets()}")
-        #    sys.exit(2)
-
-        # subdir = os.path.join(self._homepath, ".cache")
-        # self._cache_filename = os.path.join(subdir, f"{s3_backend}_filestorage.db")
-        # if cache:
-        #     if not os.path.isdir(subdir):
-        #         os.mkdir(subdir)
-        #     self._cache = Checksums(self._cache_filename)
-        # else:
-        #     self._logger.info("persistend cache disabled, only memory cache active")
-        #     self._cache = set()
 
     @property
     def blockstorage(self):

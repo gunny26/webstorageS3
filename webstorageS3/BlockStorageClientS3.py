@@ -32,18 +32,6 @@ class BlockStorageClient(StorageClient):
         self._check_bucket()
         self._init_cache(cache, "blockstorage")
 
-        # caching is done in this class, base class does not provide any
-        # cache
-        #subdir = os.path.join(self._homepath, ".cache")
-        #self._cache_filename = os.path.join(subdir, f"{s3_backend}_blockstorage.db")
-        #if cache:
-        #    if not os.path.isdir(subdir):
-        #        os.mkdir(subdir)
-        #    self._cache = Checksums(self._cache_filename)
-        #else:
-        #    self._cache = set()
-        #    self._logger.info("persistent cache disabled")
-
     @property
     def cache(self):
         return self._cache
