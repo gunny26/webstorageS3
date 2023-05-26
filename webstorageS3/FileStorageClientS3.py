@@ -5,12 +5,12 @@ RestFUL Webclient to use FileStorage WebApp
 """
 import json
 import logging
-import os
-import sys
+#import os
+#import sys
 from io import BytesIO
 
 from .BlockStorageClientS3 import BlockStorageClient
-from .Checksums import Checksums
+# from .Checksums import Checksums
 # own modules
 from .StorageClientS3 import StorageClient
 
@@ -32,20 +32,22 @@ class FileStorageClient(StorageClient):
         )
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
 
-        if self._bucket_name not in self._client.list_buckets():
-            self._logger.error(f"Bucket {self._bucket_name} does not exist")
-            self._logger.debug(f"list of buckets {self._client.list_buckets()}")
-            sys.exit(2)
+        self._check_bucket()
+        self._init_cache(cache)
+        # if self._bucket_name not in self._client.list_buckets():
+        #    self._logger.error(f"Bucket {self._bucket_name} does not exist")
+        #    self._logger.debug(f"list of buckets {self._client.list_buckets()}")
+        #    sys.exit(2)
 
-        subdir = os.path.join(self._homepath, ".cache")
-        self._cache_filename = os.path.join(subdir, f"{s3_backend}_filestorage.db")
-        if cache:
-            if not os.path.isdir(subdir):
-                os.mkdir(subdir)
-            self._cache = Checksums(self._cache_filename)
-        else:
-            self._logger.info("persistend cache disabled, only memory cache active")
-            self._cache = set()
+        # subdir = os.path.join(self._homepath, ".cache")
+        # self._cache_filename = os.path.join(subdir, f"{s3_backend}_filestorage.db")
+        # if cache:
+        #     if not os.path.isdir(subdir):
+        #         os.mkdir(subdir)
+        #     self._cache = Checksums(self._cache_filename)
+        # else:
+        #     self._logger.info("persistend cache disabled, only memory cache active")
+        #     self._cache = set()
 
     @property
     def blockstorage(self):
@@ -168,14 +170,14 @@ class FileStorageClient(StorageClient):
         """
         return self._exists(checksum)
 
-    def purge_cache(self):
-        """
-        delete locally cached checksums
-        """
-        self._logger.info(
-            f"deleting local cached checksum database in file {self.cache_filename}"
-        )
-        del self._cache  # to close database and release file
-        os.unlink(self._cache_filename)
-        self._cache = Checksums(self._cache_filename)
-        self._bs.purge_cache()
+#    def purge_cache(self):
+#        """
+#        delete locally cached checksums
+#        """
+#        self._logger.info(
+#            f"deleting local cached checksum database in file {self.cache_filename}"
+#        )
+#        del self._cache  # to close database and release file
+#        os.unlink(self._cache_filename)
+#        self._cache = Checksums(self._cache_filename)
+#        self._bs.purge_cache()

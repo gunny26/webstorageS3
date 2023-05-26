@@ -14,6 +14,8 @@ import botocore
 # non std modules
 import yaml
 
+from .Checksums import Checksums
+#
 logger = logging.getLogger("StorageClient")
 
 
@@ -32,18 +34,22 @@ class StorageClient:
         self._bucket_name = None  # bucket_name in S3
         self._hashfunc = hashlib.sha1  # TODO: hardcoded or in config?
         self._blocksize = 1024 * 1024  # TODO: hardcoded or in config?
+        self._s3_backend = s3_backend
+        self._homepath = homepath
+        self._cache_filename = None  # will be set by _init_cache
 
         # according to platform search for config file in home directory
-        self._homepath = None
-        if not homepath:
-            if os.name == "nt":
-                self._homepath = os.path.join(
-                    os.path.expanduser("~"), "AppData", "Local", "webstorage"
-                )
-            else:
-                self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-        else:
-            self._homepath = homepath
+        #self._homepath = None
+        #if not homepath:
+        #    if os.name == "nt":
+        #        self._homepath = os.path.join(
+        #            os.path.expanduser("~"), "AppData", "Local", "webstorage"
+        #        )
+        #    else:
+        #        self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
+        #else:
+        #    self._homepath = homepath
+
         logger.debug(f"using config directory {self._homepath}")
         if not os.path.isdir(self._homepath):
             logger.error(
@@ -105,32 +111,26 @@ class StorageClient:
         for key in self._list_objects():
             yield key.split(".")[0]  # only first part, ignoring endings like .bin
 
-    def head(self, key):
-        """
-        returning some meta information about object
-        """
-        try:
-            return self._client.head_object(Bucket=self._bucket_name, Key=key)
-        except botocore.exceptions.ClientError as exc:
-            if exc.response["Error"]["Code"] == "404":
-                return None
-            # Something else has gone wrong.
-            raise exc
-
-    def list(self):
-        """
-        generator to return objects in bucket
-        """
-        paginator = self._client.get_paginator("list_objects")
-        # Create a PageIterator from the Paginator
-        page_iterator = paginator.paginate(Bucket=self._bucket_name)
-        for page in page_iterator:
-            if page.get("Contents"):
-                for entry in page["Contents"]:
-                    yield entry
-
     def __contains__(self, checksum):
         return self._exists(checksum)
+
+
+    def _check_bucket(self):
+        if self._bucket_name not in self._client.list_buckets():
+            self._logger.error(f"Bucket {self._bucket_name} does not exist")
+            self._logger.debug(f"list of buckets {self._client.list_buckets()}")
+            sys.exit(2)
+
+    def _init_cache(self, cache):
+        subdir = os.path.join(self._homepath, ".cache")
+        self._cache_filename = os.path.join(subdir, f"{self._s3_backend}_filestorage.db")
+        if cache:
+            if not os.path.isdir(subdir):
+                os.mkdir(subdir)
+            self._cache = Checksums(self._cache_filename)
+        else:
+            self._logger.info("persistend cache disabled, only memory cache active")
+            self._cache = set()
 
     def _blockdigest(self, data):
         """
@@ -189,3 +189,39 @@ class StorageClient:
         """return list of buckets on s3 backend"""
         result = self._client.list_buckets()
         return [entry["Name"] for entry in result["Buckets"]]
+
+    def head(self, key):
+        """
+        returning some meta information about object
+        """
+        try:
+            return self._client.head_object(Bucket=self._bucket_name, Key=key)
+        except botocore.exceptions.ClientError as exc:
+            if exc.response["Error"]["Code"] == "404":
+                return None
+            # Something else has gone wrong.
+            raise exc
+
+    def list(self):
+        """
+        generator to return objects in bucket
+        """
+        paginator = self._client.get_paginator("list_objects")
+        # Create a PageIterator from the Paginator
+        page_iterator = paginator.paginate(Bucket=self._bucket_name)
+        for page in page_iterator:
+            if page.get("Contents"):
+                for entry in page["Contents"]:
+                    yield entry
+
+    def purge_cache(self):
+        """
+        delete locally cached checksums
+        """
+        self._logger.info(
+            f"deleting local cached checksum database in file {self.cache_filename}"
+        )
+        del self._cache  # to close database and release file
+        os.unlink(self._cache_filename)
+        self._cache = Checksums(self._cache_filename)
+        self._bs.purge_cache()
