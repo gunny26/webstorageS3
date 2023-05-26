@@ -116,6 +116,7 @@ class StorageClient:
 
 
     def _check_bucket(self):
+        print(self._client.list_buckets())
         if self._bucket_name not in self._client.list_buckets():
             self._logger.error(f"Bucket {self._bucket_name} does not exist")
             self._logger.debug(f"list of buckets {self._client.list_buckets()}")
