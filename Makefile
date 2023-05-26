@@ -8,7 +8,7 @@ export IMAGE_NAME_LATEST ?= $(REGISTRY)/$(IMAGENAME):latest
 export IMAGE_NAME_STABLE ?= $(REGISTRY)/$(IMAGENAME):stable
 
 latest:
-	git commit -a -m "automatic pre latest built commit"
+	git commit -a -m "automatic pre latest built commit"; echo 0
 	python3 setup.py install --user
 
 stable:
