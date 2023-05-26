@@ -156,7 +156,6 @@ def main():
         client = BlockStorageClient(
             homepath=args.homepath, cache=args.cache, s3_backend=args.backend
         )
-        logging.info("checking all stored checksum, this could take some time")
         # {
         #   'Key': '00b8abb14057692f7b6b272af1406b340392454c',
         #   'LastModified': datetime.datetime(2023, 4, 5, 12, 18, 7, tzinfo=tzutc()),
@@ -166,7 +165,7 @@ def main():
         #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
         # }
         for checksum in client.list():
-            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
+            logging.info(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
 
 
 if __name__ == "__main__":

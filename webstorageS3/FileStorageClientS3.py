@@ -6,6 +6,7 @@ RestFUL Webclient to use FileStorage WebApp
 import json
 import logging
 import os
+import sys
 from io import BytesIO
 
 from .BlockStorageClientS3 import BlockStorageClient
@@ -29,8 +30,12 @@ class FileStorageClient(StorageClient):
         self._bs = BlockStorageClient(
             cache=cache, homepath=homepath, s3_backend=s3_backend
         )
-        self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
+
+        if self._bucket_name not in self._client.list_buckets():
+            self._logger.error(f"Bucket {self._bucket_name} does not exist")
+            self._logger.debug(f"list of buckets {self._client.list_buckets()}")
+            sys.exit(2)
 
         subdir = os.path.join(self._homepath, ".cache")
         self._cache_filename = os.path.join(subdir, f"{s3_backend}_filestorage.db")
