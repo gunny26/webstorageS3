@@ -8,7 +8,7 @@ import os
 from io import BytesIO
 
 # own modules
-from .shecksums import Checksums
+from .checksums import Checksums
 from .storageclient_s3 import StorageClient
 
 

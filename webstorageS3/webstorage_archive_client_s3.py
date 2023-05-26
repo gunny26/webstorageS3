@@ -32,7 +32,8 @@ class WebStorageArchiveClient(StorageClient):
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
 
-    def _gzip_str(self, data: dict):
+    @staticmethod
+    def _gzip_str(data: dict):
         """
         gzip some string and return bytes
 
@@ -44,7 +45,8 @@ class WebStorageArchiveClient(StorageClient):
         out.seek(0)
         return out
 
-    def _gunzip_bytes(self, bytes_obj):
+    @staticmethod
+    def _gunzip_bytes(bytes_obj):
         """
         gunzip some bytes data to string
 
