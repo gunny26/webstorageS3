@@ -127,7 +127,7 @@ class StorageClient:
         for page in page_iterator:
             if page.get("Contents"):
                 for entry in page["Contents"]:
-                    return entry
+                    yield entry
 
     def __contains__(self, checksum):
         return self._exists(checksum)
