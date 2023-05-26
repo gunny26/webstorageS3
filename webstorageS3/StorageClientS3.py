@@ -119,7 +119,7 @@ class StorageClient:
         print(self._client.list_buckets())
         buckets = [bucket["Name"] for bucket in self._client.list_buckets()["Buckets"]]
         print(buckets)
-        if self._bucket_name not in self._client.list_buckets():
+        if self._bucket_name not in buckets:
             self._logger.error(f"Bucket {self._bucket_name} does not exist")
             self._logger.debug(f"list of buckets {self._client.list_buckets()}")
             sys.exit(2)
