@@ -571,11 +571,13 @@ def main():
     elif args.list:
         # -l
         # list all available backupsets
-        for value in wsa.get_backupsets(args.hostname):
-            logging.info(
-                "%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s",
-                value,
-            )
+        for checksum in wsa.list():
+            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
+        #for value in wsa.get_backupsets(args.hostname):
+        #    logging.info(
+        #        "%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s",
+        #        value,
+        #    )
     # LIST Content of Archive
     elif args.list_content:
         if not args.name[0]:

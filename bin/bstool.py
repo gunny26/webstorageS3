@@ -183,7 +183,7 @@ def main():
         #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
         # }
         for checksum in client.list():
-            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size'])}\t{checksum['Key']}")
+            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
 
 
 if __name__ == "__main__":
