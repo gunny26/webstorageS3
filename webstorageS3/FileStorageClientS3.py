@@ -3,14 +3,15 @@
 """
 RestFUL Webclient to use FileStorage WebApp
 """
-import os
 import json
 import logging
+import os
 from io import BytesIO
-# own modules
-from .StorageClientS3 import StorageClient
+
 from .BlockStorageClientS3 import BlockStorageClient
 from .Checksums import Checksums
+# own modules
+from .StorageClientS3 import StorageClient
 
 
 class FileStorageClient(StorageClient):
@@ -19,23 +20,30 @@ class FileStorageClient(StorageClient):
     the recipe to reassemble will be stored in FileStorage
     """
 
-    CACHE_FILENAME = "_filestorage_cache.db"  # filname to store checksums
-
     def __init__(self, cache=True, homepath=None, s3_backend="DEFAULT"):
         """__init__"""
-        super(FileStorageClient, self).__init__(homepath=homepath, s3_backend=s3_backend)
+        super(FileStorageClient, self).__init__(
+            homepath=homepath, s3_backend=s3_backend
+        )
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._bs = BlockStorageClient(cache=cache, homepath=homepath, s3_backend=s3_backend)
+        self._bs = BlockStorageClient(
+            cache=cache, homepath=homepath, s3_backend=s3_backend
+        )
         self._logger.debug("bucket list: %s", self._client.list_buckets())
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
+
+        subdir = os.path.join(self._homepath, ".cache")
+        self._cache_filename = os.path.join(subdir, f"{s3_backend}_filestorage.db")
         if cache:
-            self._checksums = Checksums(os.path.join(self._homepath, self.CACHE_FILENAME))
-            self._logger.info("found %d stored checksums in local cache", len(self._checksums))
-            self._get_checksums()
-            self._logger.info("found %d stored checksums after cache and bucket", len(self._checksums))
+            if not os.path.isdir(subdir):
+                os.mkdir(subdir)
+            self._cache = Checksums(self._cache_filename)
+            self._logger.info(
+                "found %d stored checksums in local cache", len(self._cache)
+            )
         else:
-            self._logger.info("cache disabled")
-            self._checksums = set()
+            self._logger.info("persistend cache disabled, only memory cache active")
+            self._cache = set()
 
     @property
     def blockstorage(self):
@@ -43,6 +51,10 @@ class FileStorageClient(StorageClient):
         reference to used BlockStorage
         """
         return self._bs  # TODO: is this necessary
+
+    @property
+    def cache(self):
+        return self._cache
 
     def put(self, fh, mime_type="application/octet-stream"):
         """
@@ -73,17 +85,26 @@ class FileStorageClient(StorageClient):
             metadata["size"] += len(data)
             filehash.update(data)  # running filehash until end
             checksum, status = self._bs.put(data, use_cache=True)
-            self._logger.debug("PUT blockcount: %d, checksum: %s, status: %s", len(metadata["blockchain"]), checksum, status)
+            self._logger.debug(
+                "PUT blockcount: %d, checksum: %s, status: %s",
+                len(metadata["blockchain"]),
+                checksum,
+                status,
+            )
             # 202 - skipped, block in cache, 201 - rewritten, block existed
             if status in (201, 202):
                 metadata["blockhash_exists"] += 1
             metadata["blockchain"].append(checksum)
             data = fh.read(self._bs.blocksize)
-        self._logger.debug("put %d blocks in BlockStorage, %d existed already", len(metadata["blockchain"]), metadata["blockhash_exists"])
+        self._logger.debug(
+            "put %d blocks in BlockStorage, %d existed already",
+            len(metadata["blockchain"]),
+            metadata["blockhash_exists"],
+        )
         # put file composition into filestorage
         filedigest = filehash.hexdigest()
         metadata["checksum"] = filedigest
-        if filedigest not in self._checksums:  # check if filehash is already stored
+        if filedigest not in self._cache:  # check if filehash is already stored
             self._logger.debug("storing recipe for filechecksum: %s", filedigest)
             self._put(filedigest, metadata)
             return metadata
@@ -97,11 +118,15 @@ class FileStorageClient(StorageClient):
         :param checksum <str>: hexdigest of checksum
         :param data <dict>: meta data to this checksum
         """
-        if checksum in self._checksums:
-            self._logger.debug("202 - skip this block, checksum is in list of cached checksums")
+        if checksum in self._cache:
+            self._logger.debug(
+                "202 - skip this block, checksum is in list of cached checksums"
+            )
             return checksum, 202
-        self._client.upload_fileobj(BytesIO(json.dumps(data).encode("utf-8")), self._bucket_name, checksum)  # TODO: exceptions
-        self._checksums.add(checksum)  # add to local cache
+        self._client.upload_fileobj(
+            BytesIO(json.dumps(data).encode("utf-8")), self._bucket_name, checksum
+        )  # TODO: exceptions
+        self._cache.add(checksum)  # add to local cache
         return checksum, 200  # fake
 
     def read(self, checksum):
@@ -123,12 +148,14 @@ class FileStorageClient(StorageClient):
         :param checksum <str>: hexdigest of checksum
         """
         b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, checksum, b_buffer)  # TODO: exceptions
+        self._client.download_fileobj(
+            self._bucket_name, checksum, b_buffer
+        )  # TODO: exceptions
         b_buffer.seek(0)  # do not forget this tiny little line !!
         data = b_buffer.read().decode("utf-8")
         return json.loads(data)
 
-    def exist(self, checksum, force=False):
+    def exists(self, checksum, force=False):
         """
         return True if checksum is in local cache
         TODO: also check S3 Backend ?
@@ -137,15 +164,16 @@ class FileStorageClient(StorageClient):
         :param force <bool>:if True check S3 backend
         :return <bool>: True if checksum also known
         """
-        return self._exist(checksum, force)
+        return self._exists(checksum)
 
     def purge_cache(self):
         """
         delete locally cached checksums
         """
-        cache_filename = os.path.join(self._homepath, self.CACHE_FILENAME)
-        self._logger.info(f"deleting local cached checksum database in file {cache_filename}")
-        del(self._checksums)  # to close database and release file
-        os.unlink(cache_filename)
-        self._checksums = Checksums(cache_filename)
+        self._logger.info(
+            f"deleting local cached checksum database in file {self.cache_filename}"
+        )
+        del self._cache  # to close database and release file
+        os.unlink(self._cache_filename)
+        self._cache = Checksums(self._cache_filename)
         self._bs.purge_cache()

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
+import logging
 import os
 import sqlite3
-import logging
 
 
 class Checksums:
@@ -33,11 +33,7 @@ class Checksums:
             result = self._cur.execute(sqlstring)
             for entry in result:
                 self._checksums.add(entry[0])
-            self._logger.info("found %d existing checksums", len(self._checksums))
-
-    def checksums(self) -> list:
-        """return <list> copy of actual checksums"""
-        return list(self._checksums)
+            self._logger.info(f"loaded {len(self._checksums)} existing checksums")
 
     def update(self, checksums: str):
         """
@@ -55,13 +51,14 @@ class Checksums:
         :param checksum <str>: checksum to store
         """
         assert len(checksum) == 40
-        try:
-            self._cur.execute(f"INSERT INTO tbl_checksums VALUES('{checksum}')")
-            self._con.commit()
-            self._checksums.add(checksum)
-        except sqlite3.IntegrityError as exc:
-            self._logger.exception(exc)
-            self._logger.error("error adding checksum %s to cache", checksum)
+        if checksum not in self._checksums:  # otherwise unique constraint error
+            try:
+                self._cur.execute(f"INSERT INTO tbl_checksums VALUES('{checksum}')")
+                self._con.commit()
+                self._checksums.add(checksum)
+            except sqlite3.IntegrityError as exc:
+                self._logger.exception(exc)
+                self._logger.error(f"error adding checksum {checksum} to cache")
 
     def __contains__(self, checksum: str) -> bool:
         if len(checksum) != 40:
@@ -72,4 +69,4 @@ class Checksums:
         return len(self._checksums)
 
     def __iter__(self) -> set:
-        return self._checksums
+        return self._checksums.__iter__()

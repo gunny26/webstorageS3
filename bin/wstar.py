@@ -14,13 +14,15 @@ import socket
 import argparse
 import stat
 import logging
+
 # non std modules
 import botocore
+
 # own modules
 from webstorageS3 import WebStorageArchiveClient, FileStorageClient
 
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 
 # according to platform search for config file in home directory
 if os.name == "nt":
@@ -34,22 +36,22 @@ def filemode(st_mode):
     convert stat st_mode number to human readable string
     taken from https://stackoverflow.com/questions/17809386/how-to-convert-a-stat-output-to-a-unix-permissions-string
     """
-    is_dir = 'd' if stat.S_ISDIR(st_mode) else '-'
-    dic = {'7': 'rwx', '6': 'rw-', '5': 'r-x', '4': 'r--', '0': '---'}
+    is_dir = "d" if stat.S_ISDIR(st_mode) else "-"
+    dic = {"7": "rwx", "6": "rw-", "5": "r-x", "4": "r--", "0": "---"}
     perm = str(oct(st_mode)[-3:])
-    return is_dir + ''.join(dic.get(x, x) for x in perm)
+    return is_dir + "".join(dic.get(x, x) for x in perm)
 
 
-def sizeof_fmt(num, suffix='B'):
+def sizeof_fmt(num, suffix="B"):
     """
     function to convert numerical size number into human readable number
     taken from https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
     """
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+    return "%.1f%s%s" % (num, "Yi", suffix)
 
 
 def ppls(absfile, filedata):
@@ -60,7 +62,14 @@ def ppls(absfile, filedata):
     """
     st_mtime, st_atime, st_ctime, st_uid, st_gid, st_mode, st_size = filedata["stat"]
     datestring = datetime.datetime.fromtimestamp(int(st_mtime))
-    return "%10s %5s %5s %10s %19s %s" % (filemode(st_mode), st_uid, st_gid, sizeof_fmt(st_size), datestring, absfile)
+    return "%10s %5s %5s %10s %19s %s" % (
+        filemode(st_mode),
+        st_uid,
+        st_gid,
+        sizeof_fmt(st_size),
+        datestring,
+        absfile,
+    )
 
 
 def create_blacklist(absfilename):
@@ -112,7 +121,7 @@ def create(filestorage, path, blacklist_func, tag):
         "stoptime": None,
         "hostname": socket.gethostname(),
         "tag": tag,
-        "datetime": datetime.datetime.today().isoformat()
+        "datetime": datetime.datetime.today().isoformat(),
     }
     action_stat = {
         "PUT": 0,
@@ -142,12 +151,28 @@ def create(filestorage, path, blacklist_func, tag):
                         action_str = "PUT"
                 archive_dict["filedata"][absfilename] = {
                     "checksum": metadata["checksum"],
-                    "stat": (stats.st_mtime, stats.st_atime, stats.st_ctime, stats.st_uid, stats.st_gid, stats.st_mode, stats.st_size)
+                    "stat": (
+                        stats.st_mtime,
+                        stats.st_atime,
+                        stats.st_ctime,
+                        stats.st_uid,
+                        stats.st_gid,
+                        stats.st_mode,
+                        stats.st_size,
+                    ),
                 }
                 if action_str == "PUT":
-                    logging.error("%8s %s", action_str, ppls(absfilename, archive_dict["filedata"][absfilename]))
+                    logging.error(
+                        "%8s %s",
+                        action_str,
+                        ppls(absfilename, archive_dict["filedata"][absfilename]),
+                    )
                 else:
-                    logging.info("%8s %s", action_str, ppls(absfilename, archive_dict["filedata"][absfilename]))
+                    logging.info(
+                        "%8s %s",
+                        action_str,
+                        ppls(absfilename, archive_dict["filedata"][absfilename]),
+                    )
                 action_stat[action_str] += 1
             except (OSError, IOError, botocore.exceptions.ClientError) as exc:
                 logging.error(f"error while processing file {absfilename}")
@@ -157,7 +182,12 @@ def create(filestorage, path, blacklist_func, tag):
         logging.info("%8s : %s", action, count)
     archive_dict["stoptime"] = time.time()
     archive_dict["totalcount"] = len(archive_dict["filedata"])
-    archive_dict["totalsize"] = sum((archive_dict["filedata"][absfilename]["stat"][-1] for absfilename in archive_dict["filedata"]))
+    archive_dict["totalsize"] = sum(
+        (
+            archive_dict["filedata"][absfilename]["stat"][-1]
+            for absfilename in archive_dict["filedata"]
+        )
+    )
     return archive_dict
 
 
@@ -183,7 +213,9 @@ def diff(filestorage, data, blacklist_func):
             del data["filedata"][absfile]
             changed = True
         else:
-            st_mtime, st_atime, st_ctime, st_uid, st_gid, st_mode, st_size = filedata["stat"]
+            st_mtime, st_atime, st_ctime, st_uid, st_gid, st_mode, st_size = filedata[
+                "stat"
+            ]
             # check all except atime
             stats = os.stat(absfile)
             change = False
@@ -216,7 +248,15 @@ def diff(filestorage, data, blacklist_func):
                         # update data
                         data["filedata"][absfile] = {
                             "checksum": metadata["checksum"],
-                            "stat": (stats.st_mtime, stats.st_atime, stats.st_ctime, stats.st_uid, stats.st_gid, stats.st_mode, stats.st_size)
+                            "stat": (
+                                stats.st_mtime,
+                                stats.st_atime,
+                                stats.st_ctime,
+                                stats.st_uid,
+                                stats.st_gid,
+                                stats.st_mode,
+                                stats.st_size,
+                            ),
                         }
                         changed = True
                 except PermissionError as exc:
@@ -240,14 +280,27 @@ def diff(filestorage, data, blacklist_func):
                     metadata = filestorage.put(open(absfilename, "rb"))
                     data["filedata"][absfilename] = {
                         "checksum": metadata["checksum"],
-                        "stat": (stats.st_mtime, stats.st_atime, stats.st_ctime, stats.st_uid, stats.st_gid, stats.st_mode, stats.st_size)
+                        "stat": (
+                            stats.st_mtime,
+                            stats.st_atime,
+                            stats.st_ctime,
+                            stats.st_uid,
+                            stats.st_gid,
+                            stats.st_mode,
+                            stats.st_size,
+                        ),
                     }
                     changed = True
                 except (OSError, IOError) as exc:
                     logging.error(exc)
     data["stoptime"] = time.time()
     data["totalcount"] = len(data["filedata"])
-    data["totalsize"] = sum((data["filedata"][absfilename]["stat"][-1] for absfilename in data["filedata"].keys()))
+    data["totalsize"] = sum(
+        (
+            data["filedata"][absfilename]["stat"][-1]
+            for absfilename in data["filedata"].keys()
+        )
+    )
     return changed
 
 
@@ -265,15 +318,19 @@ def test(filestorage, data, level=0):
     blockset = set()  # unique list of blockchecksums
     if level == 0:  # check only checksum existance in filestorage
         for absfile, filedata in data["filedata"].items():
-            if filestorage.exist(filedata["checksum"]):
-                logging.info("FILE-CHECKSUM %s EXISTS  for %s", filedata["checksum"], absfile)
+            if filestorage.exists(filedata["checksum"]):
+                logging.info(
+                    "FILE-CHECKSUM %s EXISTS  for %s", filedata["checksum"], absfile
+                )
                 filecount += 1
                 fileset.add(filedata["checksum"])
     elif level == 1:  # get filemetadata and check also block existance
         blockstorage = filestorage.blockstorage
         for absfile, filedata in data["filedata"].items():
             metadata = filestorage.get(filedata["checksum"])
-            logging.info("FILE-CHECKSUM %s OK     for %s", filedata["checksum"], absfile)
+            logging.info(
+                "FILE-CHECKSUM %s OK     for %s", filedata["checksum"], absfile
+            )
             filecount += 1
             fileset.add(filedata["checksum"])
             for blockchecksum in metadata["blockchain"]:
@@ -287,7 +344,9 @@ def test(filestorage, data, level=0):
         blockstorage = filestorage.blockstorage
         for absfile, filedata in data["filedata"].items():
             metadata = filestorage.get(filedata["checksum"])
-            logging.info("FILE-CHECKSUM %s OK      for %s", filedata["checksum"], absfile)
+            logging.info(
+                "FILE-CHECKSUM %s OK      for %s", filedata["checksum"], absfile
+            )
             filecount += 1
             fileset.add(filedata["checksum"])
             for blockchecksum in metadata["blockchain"]:
@@ -295,7 +354,13 @@ def test(filestorage, data, level=0):
                 blockstorage.get(blockchecksum)
                 logging.info("BLOCKCHECKSUM %s OK", blockchecksum)
                 blockcount += 1
-    logging.info("all files %d(%d) available, %d(%d) blocks used", filecount, len(fileset), blockcount, len(blockset))
+    logging.info(
+        "all files %d(%d) available, %d(%d) blocks used",
+        filecount,
+        len(fileset),
+        blockcount,
+        len(blockset),
+    )
 
 
 def restore(filestorage, data, targetpath, overwrite=False):
@@ -306,7 +371,9 @@ def restore(filestorage, data, targetpath, overwrite=False):
     # check if some files are missing or have changed
     for absfile in sorted(data["filedata"].keys()):
         filedata = data["filedata"][absfile]
-        st_mtime, st_atime, st_ctime, st_uid, st_gid, st_mode, st_size = filedata["stat"]
+        st_mtime, st_atime, st_ctime, st_uid, st_gid, st_mode, st_size = filedata[
+            "stat"
+        ]
         newfilename = absfile.replace(data["path"], targetpath)
         # remove double slashes
         if not os.path.isdir(os.path.dirname(newfilename)):
@@ -386,7 +453,11 @@ def save_webstorage_archive(data: dict):
     afterwards store in WebStorageArchive
     """
     duration = data["stoptime"] - data["starttime"]
-    logging.info("duration %0.2f s, bandwith %s /s", duration, sizeof_fmt(data["totalsize"] / duration))
+    logging.info(
+        "duration %0.2f s, bandwith %s /s",
+        duration,
+        sizeof_fmt(data["totalsize"] / duration),
+    )
     logging.info("%(totalcount)d files of %(totalsize)s bytes size", data)
     # wsa = WebStorageArchiveClient()
     wsa.save(data)
@@ -428,7 +499,9 @@ def import_archive(filename: str, delete: bool = False, check: bool = True):
             logging.info("archive does not exist, data will be analyzed")
             if check:
                 for filename, filedata in data["filedata"].items():
-                    logging.info("{filename} : {filestorage.exists(filedata['checksum'])}")
+                    logging.info(
+                        "{filename} : {filestorage.exists(filedata['checksum'])}"
+                    )
     if exists and delete:
         logging.info(f"deleting file {filename}")
         os.unlink(filename)
@@ -445,62 +518,6 @@ def export_archive(archive_name: str):
 
 
 def main():
-    """
-    get options, then call specific functions
-    """
-    parser = argparse.ArgumentParser(
-        description="create/manage/restore WebStorage Archives",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument("name", nargs="*", help="filename or archive name or path")
-    parser.add_argument("--homepath", default=HOMEPATH, help="path to config directory")
-
-    group_create = parser.add_argument_group("create backupset from scratch")
-    group_create.add_argument("-c", "--create", action="store_true", help="create archive of this name")
-
-    group_diff = parser.add_argument_group("create incremental backupset, some pre existing backupset must exist")
-    group_diff.add_argument("-d", dest="diff", action="store_true", help="create differential to latest or given backupset name")
-
-    group_extract = parser.add_argument_group("extract archive")
-    group_extract.add_argument("-x", dest="extract", action="store_true", help="restore content of backupset to path location")
-    # group_extract.add_argument("--backupset", help="backupset to get from backend, if not given use the latest available backupset")
-    group_extract.add_argument("--overwrite", action="store_true", default=False, help="overwrite existing files during restore default %(default)s")
-    # group_extract.add_argument("--extract-path", help="path to restore to")
-
-    group_get = parser.add_argument_group("Extract single file from backupset")
-    group_get.add_argument("-X", dest="extract_file", action="store_true", help="extract single files from backupset")
-    # group_get.add_argument("--checksum", help="file checksum")
-    # group_get.add_argument("--name", help="file checksum")
-
-    group_test = parser.add_argument_group("testing of backupsets and retrieving existing archive informations")
-    group_test.add_argument("-l", dest="list", action="store_true", help="list backupsets, use --backupset to specify one specific")
-    group_test.add_argument("-L", dest="list_content", action="store_true", help="list content of backupset")
-    group_test.add_argument("--list-checksums", action="store_true", default=False, help="in conjunction with -L to output also checksums")
-    group_test.add_argument("-t", dest="test", action="store_true", help="verify archive, use --backupset to specify one specific")
-    group_test.add_argument("--test-level", default=0, help="in conjunction with --test, 0=fast, 1=medium, 2=fully")
-
-    group_optional = parser.add_argument_group("optional")
-    group_optional.add_argument("--exclude-file", help="exclude file, in conjunction with --create and --diff")
-    group_optional.add_argument("--tag", help="optional tag for this archive, otherwise last portion of path is used")
-    group_optional.add_argument("--nocache", dest="cache", action="store_false", default=True, help="disable caching mode, using less memory")
-    group_optional.add_argument("--hostname", dest="hostname", help="set specific hostname")
-
-    group_special = parser.add_argument_group("some special functions")
-    group_special.add_argument("--convert", action="store_true", help="convert wstar named ba sha256 checksum to newer key format")
-    group_special.add_argument("--purge-cache", action="store_true", help="purge locally stored checksums database")
-    group_special.add_argument("--import-archive", action="store_true", help="import archive from this local file")
-    group_special.add_argument("--export-archive", action="store_true", help="export archive from storage to local directory")
-
-    group_output = parser.add_mutually_exclusive_group()
-    group_output.add_argument("-q", "--quiet", action="store_true", help="switch to loglevel ERROR")
-    group_output.add_argument("-v", "--verbose", action="store_true", help="switch to loglevel DEBUG")
-
-    args = parser.parse_args()
-    # set logging level
-    if args.quiet is True:
-        logging.getLogger("").setLevel(logging.ERROR)
-    if args.verbose is True:
-        logging.getLogger("").setLevel(logging.DEBUG)
     # exclude file pattern of given
     blacklist_func = None
     if args.exclude_file is not None:
@@ -514,8 +531,6 @@ def main():
     #
     if not args.hostname:
         args.hostname = socket.gethostname()
-    wsa = WebStorageArchiveClient(homepath=args.homepath)
-    filestorage = FileStorageClient(cache=args.cache, homepath=args.homepath)
     # CONVERT old style archive key naming on s3
     if args.convert:
         wsa.convert_keyname()
@@ -557,7 +572,10 @@ def main():
         # -l
         # list all available backupsets
         for value in wsa.get_backupsets(args.hostname):
-            logging.info("%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s", value)
+            logging.info(
+                "%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s",
+                value,
+            )
     # LIST Content of Archive
     elif args.list_content:
         if not args.name[0]:
@@ -592,7 +610,9 @@ def main():
             archive_name = wsa.get_latest_backupset(args.hostname)
         else:
             archive_name = args.name[0]
-        logging.info(f"creating differential backupset to existing backupset {archive_name}")
+        logging.info(
+            f"creating differential backupset to existing backupset {archive_name}"
+        )
         data = get_webstorage_data(archive_name)
         changed = diff(filestorage, data, blacklist_func)
         if changed is False:
@@ -603,7 +623,9 @@ def main():
     elif args.extract:
         # -x <archive_name> <destination_path>
         if len(args.name) != 2:
-            logging.error("you have to provide first archive name and second destination path")
+            logging.error(
+                "you have to provide first archive name and second destination path"
+            )
             sys.exit(1)
         archive_name = args.name[0]
         destination_path = args.name[1]
@@ -617,7 +639,9 @@ def main():
     elif args.extract_file:
         # -X  <archive_name> <destination_path> <filename in archive>
         if len(args.name) != 3:
-            logging.error("you have to provide first archive name and second destination path and third checksum to restore")
+            logging.error(
+                "you have to provide first archive name and second destination path and third checksum to restore"
+            )
             sys.exit(1)
         archive_name = args.name[0]
         destination_path = args.name[1]
@@ -631,10 +655,161 @@ def main():
             sys.exit(2)
         filedata = data["filedata"][filename]
         checksum = filedata["checksum"]
-        restore_single(filestorage, filedata, destination_path, filename, checksum, overwrite=args.overwrite)
+        restore_single(
+            filestorage,
+            filedata,
+            destination_path,
+            filename,
+            checksum,
+            overwrite=args.overwrite,
+        )
     else:
         logging.error("nice, you have started this program without any purpose?")
 
 
 if __name__ == "__main__":
+    """
+    get options, then call specific functions
+    """
+    parser = argparse.ArgumentParser(
+        description="create/manage/restore WebStorage Archives",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("name", nargs="*", help="filename or archive name or path")
+    parser.add_argument("--homepath", default=HOMEPATH, help="path to config directory")
+
+    group_create = parser.add_argument_group("creating backupset from scratch")
+    group_create.add_argument(
+        "-c", "--create", action="store_true", help="create archive of this name"
+    )
+
+    group_diff = parser.add_argument_group(
+        "creating incremental backupset, some pre existing backupset must exist"
+    )
+    group_diff.add_argument(
+        "-d",
+        dest="diff",
+        action="store_true",
+        help="create differential to latest or given backupset name",
+    )
+
+    group_extract = parser.add_argument_group("extracting some archive")
+    group_extract.add_argument(
+        "-x",
+        dest="extract",
+        action="store_true",
+        help="restore content of backupset to path location",
+    )
+    # group_extract.add_argument("--backupset", help="backupset to get from backend, if not given use the latest available backupset")
+    group_extract.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="overwrite existing files during restore default %(default)s",
+    )
+    # group_extract.add_argument("--extract-path", help="path to restore to")
+
+    group_get = parser.add_argument_group("Extract single file from backupset")
+    group_get.add_argument(
+        "-X",
+        dest="extract_file",
+        action="store_true",
+        help="extract single files from backupset",
+    )
+    # group_get.add_argument("--checksum", help="file checksum")
+    # group_get.add_argument("--name", help="file checksum")
+
+    group_test = parser.add_argument_group(
+        "testing of backupsets and retrieving existing archive informations"
+    )
+    group_test.add_argument(
+        "-l",
+        dest="list",
+        action="store_true",
+        help="list backupsets, use --backupset to specify one specific",
+    )
+    group_test.add_argument(
+        "-L", dest="list_content", action="store_true", help="list content of backupset"
+    )
+    group_test.add_argument(
+        "--list-checksums",
+        action="store_true",
+        default=False,
+        help="in conjunction with -L to output also checksums",
+    )
+    group_test.add_argument(
+        "-t",
+        dest="test",
+        action="store_true",
+        help="verify archive, use --backupset to specify one specific",
+    )
+    group_test.add_argument(
+        "--test-level",
+        default=0,
+        help="in conjunction with --test, 0=fast, 1=medium, 2=fully",
+    )
+
+    group_optional = parser.add_argument_group("optional")
+    group_optional.add_argument(
+        "--exclude-file", help="exclude file, in conjunction with --create and --diff"
+    )
+    group_optional.add_argument(
+        "--tag",
+        help="optional tag for this archive, otherwise last portion of path is used",
+    )
+    group_optional.add_argument(
+        "--nocache",
+        dest="cache",
+        action="store_false",
+        default=True,
+        help="disable persistent checksum cache",
+    )
+    group_optional.add_argument(
+        "--hostname", dest="hostname", help="set specific hostname"
+    )
+    group_optional.add_argument(
+        "--backend", default="DEFAULT", help="backend configuration profile to use"
+    )
+
+    group_special = parser.add_argument_group("some special functions")
+    group_special.add_argument(
+        "--convert",
+        action="store_true",
+        help="convert wstar named ba sha256 checksum to newer key format",
+    )
+    group_special.add_argument(
+        "--purge-cache", action="store_true", help="purge persistent checksum database"
+    )
+    group_special.add_argument(
+        "--import-archive",
+        action="store_true",
+        help="import archive from this local file",
+    )
+    group_special.add_argument(
+        "--export-archive",
+        action="store_true",
+        help="export archive from storage to local directory",
+    )
+
+    group_output = parser.add_mutually_exclusive_group()
+    group_output.add_argument(
+        "-q", "--quiet", action="store_true", help="switch to loglevel ERROR"
+    )
+    group_output.add_argument(
+        "-v", "--verbose", action="store_true", help="switch to loglevel DEBUG"
+    )
+
+    args = parser.parse_args()
+
+    # set logging level
+    if args.quiet is True:
+        logging.getLogger("").setLevel(logging.ERROR)
+    if args.verbose is True:
+        logging.getLogger("").setLevel(logging.DEBUG)
+
+    wsa = WebStorageArchiveClient(homepath=args.homepath, s3_backend=args.backend)
+    filestorage = FileStorageClient(
+        cache=args.cache, homepath=args.homepath, s3_backend=args.backend
+    )
+
     main()

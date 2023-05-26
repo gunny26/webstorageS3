@@ -3,9 +3,10 @@
 """
 RestFUL Webclient to use BlockStorage WebApps
 """
-import os
 import logging
+import os
 from io import BytesIO
+
 # own modules
 from .Checksums import Checksums
 from .StorageClientS3 import StorageClient
@@ -18,30 +19,38 @@ class BlockStorageError(Exception):
 class BlockStorageClient(StorageClient):
     """stores chunks of data into BlockStorage"""
 
-    CACHE_FILENAME = "_blockstorage_cache.db"  # filname to store checksums
-
-    def __init__(self, cache=True, homepath=None, s3_backend="DEFAULT"):
+    def __init__(self, homepath: str, cache: bool = True, s3_backend: str = "DEFAULT"):
         """__init__"""
-        super(BlockStorageClient, self).__init__(homepath=homepath, s3_backend=s3_backend)
+        super(BlockStorageClient, self).__init__(
+            homepath=homepath, s3_backend=s3_backend
+        )
+        self._cache = cache  # bool to indicate if persistent cache is used
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.info(f"{s3_backend} bucket list  : {self._list_buckets()}")
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
-        self._logger.debug(f"bucket list: {self._client.list_buckets()}")
+        self._logger.info(f"{s3_backend} bucket to use: {self._bucket_name}")
+        assert self._bucket_name in self._list_buckets()
+
+        # caching is done in this class, base class does not provide any
+        # cache
+        subdir = os.path.join(self._homepath, ".cache")
+        self._cache_filename = os.path.join(subdir, f"{s3_backend}_blockstorage.db")
         if cache:
-            self._checksums = Checksums(os.path.join(self._homepath, self.CACHE_FILENAME))
-            self._get_checksums()
-            self._logger.debug("found {len(self._checksums)} stored checksums")
+            if not os.path.isdir(subdir):
+                os.mkdir(subdir)
+            self._cache = Checksums(self._cache_filename)
+            self._logger.debug(
+                "found {len(self._cache)} stored checksums in persistent cache"
+            )
         else:
-            self._checksums = set()
-            self._logger.info("cache disabled")
+            self._cache = set()
+            self._logger.info("persistent cache disabled")
 
     @property
-    def blocksize(self):
-        """
-        return blocksize
-        """
-        return self._blocksize
+    def cache(self):
+        return self._cache
 
-    def put(self, data, use_cache=False):
+    def put(self, data: str, use_cache: bool = False):
         """
         put some arbitrary data into storage
 
@@ -49,16 +58,24 @@ class BlockStorageClient(StorageClient):
         :param use_cache <bool>: if checksum already in list of checksums, do not store, otherwise overwrite
         """
         if len(data) > self.blocksize:  # assure maximum length
-            raise BlockStorageError("length of providede data (%s) is above maximum blocksize of %s" % (len(data), self.blocksize))
+            raise BlockStorageError(
+                "length of providede data (%s) is above maximum blocksize of %s"
+                % (len(data), self.blocksize)
+            )
         checksum = self._blockdigest(data)
-        if use_cache and checksum in self._checksums:
-            self._logger.debug("202 - skip this block, checksum is in list of cached checksums")
+        if use_cache and (checksum in self._cache):
+            self._logger.debug(
+                "202 - skip this block, checksum is in list of cached checksums"
+            )
             return checksum, 202
-        self._client.upload_fileobj(BytesIO(data), self._bucket_name, checksum)  # TODO: exceptions
-        self._checksums.add(checksum)  # add to local cache
+        self._client.upload_fileobj(
+            BytesIO(data), self._bucket_name, checksum
+        )  # TODO: exceptions
+
+        self._cache.add(checksum)  # add to local cache
         return checksum, 200  # fake
 
-    def get(self, checksum, verify=False):
+    def get(self, checksum: str, verify: bool = False):
         """
         get data defined by hexdigest from storage
         if verify - recheck checksum locally
@@ -67,39 +84,39 @@ class BlockStorageClient(StorageClient):
         :param verify <bool>: to verify checksum locally, or not
         """
         b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, checksum, b_buffer)  # TODO: exceptions
+        self._client.download_fileobj(
+            self._bucket_name, checksum, b_buffer
+        )  # TODO: exceptions
         b_buffer.seek(0)  # do not forget this tiny little line !!
         data = b_buffer.read()
         if verify:
             if checksum != self._blockdigest(data):
-                raise BlockStorageError("Checksum mismatch %s requested, %s get" % (checksum, self._blockdigest(data)))
+                raise BlockStorageError(
+                    "Checksum mismatch %s requested, %s get"
+                    % (checksum, self._blockdigest(data))
+                )
+
+        self._cache.add(checksum)  # add to local cache
         return data
 
-    def get_verify(self, checksum):
-        """
-        get data with checksum and verify checksum before returning
-
-        :param checksum <str>: hexdigest of checksum
-        """
-        return self.get(checksum, verify=True)
-
-    def exist(self, checksum, force=False):
+    def exists(self, checksum: str) -> bool:
         """
         return True if checksum is in local cache
-        TODO: also check S3 Backend ?
 
         :param checksum <str>: hexdigest of checksum
-        :param force <bool>:if True check S3 backend
         :return <bool>: True if checksum also known
         """
-        return self._exist(checksum, force)
+        if checksum in self.cache:  # if in cache, ok
+            return True
+        return self._exists(checksum)
 
     def purge_cache(self):
         """
         delete locally cached checksums
         """
-        cache_filename = os.path.join(self._homepath, self.CACHE_FILENAME)
-        self._logger.info(f"deleting local cached checksum database in file {cache_filename}")
-        del(self._checksums)  # to close database and release file
-        os.unlink(cache_filename)
-        self._checksums = Checksums(cache_filename)
+        self._logger.info(
+            f"deleting local cached checksum database in file {self._cache_filename}"
+        )
+        del self.checksums  # to close database and release file
+        os.unlink(self._cache_filename)
+        self.checksums = Checksums(self._cache_filename)

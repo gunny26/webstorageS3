@@ -6,12 +6,14 @@ RestFUL Webclient to use FileStorage and BlockStorage WebApps
 """
 import gzip
 import hashlib
-from io import BytesIO
 import json
 import logging
 import re
+from io import BytesIO
+
 # non std modules
 import botocore
+
 # own modules
 from .StorageClientS3 import StorageClient
 
@@ -23,7 +25,9 @@ class WebStorageArchiveClient(StorageClient):
 
     def __init__(self, homepath=None, s3_backend="DEFAULT"):
         """__init__"""
-        super(WebStorageArchiveClient, self).__init__(homepath=homepath, s3_backend=s3_backend)
+        super(WebStorageArchiveClient, self).__init__(
+            homepath=homepath, s3_backend=s3_backend
+        )
         self._logger = logging.getLogger(self.__class__.__name__)
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
         self._logger.debug("bucket list: %s", self._client.list_buckets())
@@ -35,7 +39,7 @@ class WebStorageArchiveClient(StorageClient):
         :param data <str>: some string, will be utf-8 encoded
         """
         out = BytesIO()
-        with gzip.GzipFile(fileobj=out, mode='w') as outfile:
+        with gzip.GzipFile(fileobj=out, mode="w") as outfile:
             outfile.write(data.encode("utf-8"))
         out.seek(0)
         return out
@@ -50,7 +54,7 @@ class WebStorageArchiveClient(StorageClient):
         in_ = BytesIO()
         in_.write(bytes_obj)
         in_.seek(0)
-        with gzip.GzipFile(fileobj=in_, mode='rb') as infile:
+        with gzip.GzipFile(fileobj=in_, mode="rb") as infile:
             gunzipped_bytes_obj = infile.read()
         return gunzipped_bytes_obj.decode("utf-8")
 
@@ -66,8 +70,10 @@ class WebStorageArchiveClient(StorageClient):
         result = {}
         for key in self._list_objects():  # get keys in bucket
             self._logger.debug(f"found key {key}")
-            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
-            size = response['ContentLength']
+            response = self._client.head_object(
+                Bucket=self._bucket_name, Key=key
+            )  # TODO: exceptions
+            size = response["ContentLength"]
             # if "Metadata" in response and response["Metadata"]:
             if response.get("Metadata"):
                 thishostname = response["Metadata"]["hostname"]
@@ -76,7 +82,9 @@ class WebStorageArchiveClient(StorageClient):
                 # 2016-10-25T20:23:17.782902
                 thisdate, thistime = timestamp.split("T")
                 thistime = thistime.split(".")[0]
-                if hostname and hostname != thishostname:  # filter only backupsets for this hostname
+                if (
+                    hostname and hostname != thishostname
+                ):  # filter only backupsets for this hostname
                     continue
                 result[key] = {
                     "date": thisdate,
@@ -85,7 +93,7 @@ class WebStorageArchiveClient(StorageClient):
                     "size": size,
                     "tag": tag,
                     "hostname": thishostname,
-                    "basename": key
+                    "basename": key,
                 }
         # sort by datetime
         return sorted(result.values(), key=lambda a: a["datetime"])
@@ -117,7 +125,9 @@ class WebStorageArchiveClient(StorageClient):
         :return <dict>: metadata of archive
         """
         b_buffer = BytesIO()
-        self._client.download_fileobj(self._bucket_name, filename, b_buffer)  # TODO: exceptions
+        self._client.download_fileobj(
+            self._bucket_name, filename, b_buffer
+        )  # TODO: exceptions
         b_buffer.seek(0)  # do not forget this tiny little line !!
         gzip_data = b_buffer.read()
         data = self._gunzip_bytes(gzip_data)
@@ -141,7 +151,7 @@ class WebStorageArchiveClient(StorageClient):
             "Metadata": {
                 "hostname": data["hostname"],
                 "tag": data["tag"],
-                "datetime": data["datetime"]
+                "datetime": data["datetime"],
             }
         }
         key = self.get_key(data)  # building key sortable
@@ -150,7 +160,9 @@ class WebStorageArchiveClient(StorageClient):
         # self._logger.info(f"storing wstar as {data['checksum']}")
         # self._client.upload_fileobj(f_object, self._bucket_name, data["checksum"], ExtraArgs=extra_args)
         self._logger.info(f"storing wstar as {key}")
-        self._client.upload_fileobj(f_object, self._bucket_name, key, ExtraArgs=extra_args)
+        self._client.upload_fileobj(
+            f_object, self._bucket_name, key, ExtraArgs=extra_args
+        )
 
     def delete(self, key: str):
         """
@@ -160,7 +172,7 @@ class WebStorageArchiveClient(StorageClient):
         res = self._client.delete_object(Bucket=self._bucket_name, Key=key)
         self._logger.info(f"result: {res}")
 
-    def exists(self, key: str) -> bool:
+    def __exists(self, key: str) -> bool:
         """
         checking of some S3 bject exists or not, basic S3 function
         """
@@ -168,7 +180,7 @@ class WebStorageArchiveClient(StorageClient):
             self._client.head_object(Bucket=self._bucket_name, Key=key)
             return True
         except botocore.exceptions.ClientError as exc:
-            if exc.response['Error']['Code'] == "404":
+            if exc.response["Error"]["Code"] == "404":
                 return False
             else:
                 # Something else has gone wrong.
@@ -196,7 +208,9 @@ class WebStorageArchiveClient(StorageClient):
         backupsets without Metadata where made by version 1.2 and earlier
         """
         for key in self._list_objects():  # get keys in bucket
-            response = self._client.head_object(Bucket=self._bucket_name, Key=key)  # TODO: exceptions
+            response = self._client.head_object(
+                Bucket=self._bucket_name, Key=key
+            )  # TODO: exceptions
             if not response.get("Metadata"):
                 self._logger.error(f"converting adding Metadata to key {key}")
                 data = self.read(key)

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import logging
+
 # logging.basicConfig(level=logging.INFO)
 # own modules
 from webstorageS3 import FileStorageClient
@@ -19,13 +20,13 @@ def main():
     metadata = json.loads(open(sys.argv[1], "rt").read())
     # print(metadata)
     print(f"downloading filestore object with checksum {metadata['checksum']}")
-    recipe = fs.get(metadata["checksum"]) # that should be the same as locally stored
-    #print(recipe)
+    recipe = fs.get(metadata["checksum"])  # that should be the same as locally stored
+    # print(recipe)
     mail_b = bytes()
     for checksum in recipe["blockchain"]:
         mail_b += fs.blockstorage.get(checksum)
     mail = json.loads(mail_b.decode("utf-8"))
-    #print(json.dumps(mail, indent=2))
+    # print(json.dumps(mail, indent=2))
     print(f"received on {mail['mail']['received']} with size {mail['mail']['size']}")
     print(f"From   : {mail['mail']['from']}")
     print(f"To     : {mail['mail']['to']}")
@@ -37,6 +38,7 @@ def main():
     print("-------------------------")
     for attachment in mail["mail"]["attachments"]:
         print(attachment[1], "\t", attachment[0])
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 # webstorageS3
+
 Simple Framework to archive binary blobs, files and archives on any S3 server.
 
 Data will be deduplicated on block (1 megabyte) and file level.
@@ -8,12 +9,22 @@ There is actually no way to delete something.
 ## blockstorage bucket
 
 This bucket is used to store chunks of max 1024 * 1024 bytes.
-The original data will be split in this chunks and stored under their SHA1 cheksum
+The original data will be split in this chunks and stored under their SHA1 cheksum as keyname.
 
 ## filestorage bucket
 
 Every file will be split into chunks of max 1024 * 1024 bytes, these blobs are stored in blockstorage bucket.
 The list of checksums of each individual block will be stored in filestorage bucket named by the SHA1 checksum of the whole file.
+
+ever object in filestorage is like this json structure.
+
+	{
+            "blockchain": [],  # list of sha1 checksums in blockstorage, order matters
+            "size": 0,  # size in bytes
+            "checksum": None,  # sha1 checksum of whole file
+            "mime_type": mime_type,  # optional
+	    ...
+        }
 
 ## webstorage bucket
 

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import logging
+
 logging.basicConfig(level=logging.INFO)
 # own modules
 from webstorageS3 import FileStorageClient
@@ -27,6 +28,7 @@ def main():
         for block in fs.read(sys.argv[1]):
             outfile.write(block)
         print("done")
+
 
 if __name__ == "__main__":
     main()
