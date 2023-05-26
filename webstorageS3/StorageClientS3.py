@@ -121,9 +121,9 @@ class StorageClient:
             self._logger.debug(f"list of buckets {self._client.list_buckets()}")
             sys.exit(2)
 
-    def _init_cache(self, cache):
+    def _init_cache(self, cache, name):
         subdir = os.path.join(self._homepath, ".cache")
-        self._cache_filename = os.path.join(subdir, f"{self._s3_backend}_filestorage.db")
+        self._cache_filename = os.path.join(subdir, f"{self._s3_backend}_{name}.db")
         if cache:
             if not os.path.isdir(subdir):
                 os.mkdir(subdir)

@@ -33,7 +33,7 @@ class FileStorageClient(StorageClient):
         self._bucket_name = self._config["FILESTORAGE_BUCKET_NAME"]
 
         self._check_bucket()
-        self._init_cache(cache)
+        self._init_cache(cache, "filestorage")
         # if self._bucket_name not in self._client.list_buckets():
         #    self._logger.error(f"Bucket {self._bucket_name} does not exist")
         #    self._logger.debug(f"list of buckets {self._client.list_buckets()}")
