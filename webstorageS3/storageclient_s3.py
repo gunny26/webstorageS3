@@ -14,7 +14,8 @@ import botocore
 # non std modules
 import yaml
 
-from .Checksums import Checksums
+from .checksums import Checksums
+
 #
 logger = logging.getLogger("StorageClient")
 
@@ -28,27 +29,16 @@ class StorageClient:
     def __init__(self, homepath: str, s3_backend: str = "DEFAULT"):
         logger.debug(f"s3_backend = {s3_backend}")
         logger.debug(f"homepath   = {homepath}")
+        self._s3_backend = s3_backend
+        self._homepath = homepath
 
         self._config = None  # holding yaml config
         self._logger = None  # logger
         self._bucket_name = None  # bucket_name in S3
         self._hashfunc = hashlib.sha1  # TODO: hardcoded or in config?
         self._blocksize = 1024 * 1024  # TODO: hardcoded or in config?
-        self._s3_backend = s3_backend
-        self._homepath = homepath
+        self._cache = None  # will be set by _init_cache
         self._cache_filename = None  # will be set by _init_cache
-
-        # according to platform search for config file in home directory
-        #self._homepath = None
-        #if not homepath:
-        #    if os.name == "nt":
-        #        self._homepath = os.path.join(
-        #            os.path.expanduser("~"), "AppData", "Local", "webstorage"
-        #        )
-        #    else:
-        #        self._homepath = os.path.join(os.path.expanduser("~"), ".webstorage")
-        #else:
-        #    self._homepath = homepath
 
         logger.debug(f"using config directory {self._homepath}")
         if not os.path.isdir(self._homepath):
@@ -113,7 +103,6 @@ class StorageClient:
 
     def __contains__(self, checksum):
         return self._exists(checksum)
-
 
     def _check_bucket(self):
         buckets = [bucket["Name"] for bucket in self._client.list_buckets()["Buckets"]]
@@ -220,9 +209,8 @@ class StorageClient:
         delete locally cached checksums
         """
         self._logger.info(
-            f"deleting local cached checksum database in file {self.cache_filename}"
+            f"deleting local cached checksum database in file {self._cache_filename}"
         )
         del self._cache  # to close database and release file
         os.unlink(self._cache_filename)
         self._cache = Checksums(self._cache_filename)
-        self._bs.purge_cache()

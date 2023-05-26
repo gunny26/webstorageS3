@@ -15,7 +15,7 @@ from io import BytesIO
 import botocore
 
 # own modules
-from .StorageClientS3 import StorageClient
+from .storageclient_s3 import StorageClient
 
 
 class WebStorageArchiveClient(StorageClient):
@@ -172,7 +172,7 @@ class WebStorageArchiveClient(StorageClient):
         res = self._client.delete_object(Bucket=self._bucket_name, Key=key)
         self._logger.info(f"result: {res}")
 
-    def __exists(self, key: str) -> bool:
+    def _exists(self, key: str) -> bool:
         """
         checking of some S3 bject exists or not, basic S3 function
         """
@@ -182,9 +182,7 @@ class WebStorageArchiveClient(StorageClient):
         except botocore.exceptions.ClientError as exc:
             if exc.response["Error"]["Code"] == "404":
                 return False
-            else:
-                # Something else has gone wrong.
-                raise exc
+            raise exc
 
     def convert_keyname(self):
         """
@@ -198,7 +196,7 @@ class WebStorageArchiveClient(StorageClient):
                 data = self.read(key)
                 newkey = self.get_key(data)
                 self.save(data)
-                if self.exists(newkey):
+                if self._exists(newkey):
                     self.delete(key)
 
     def convert_metadata(self):
@@ -216,5 +214,5 @@ class WebStorageArchiveClient(StorageClient):
                 data = self.read(key)
                 newkey = self.get_key(data)
                 self.save(data)
-                if self.exists(newkey):
+                if self._exists(newkey):
                     self.delete(key)

@@ -5,14 +5,14 @@ RestFUL Webclient to use FileStorage WebApp
 """
 import json
 import logging
-#import os
-#import sys
+# import os
+# import sys
 from io import BytesIO
 
-from .BlockStorageClientS3 import BlockStorageClient
+from .blockstorage_client_s3 import BlockStorageClient
 # from .Checksums import Checksums
 # own modules
-from .StorageClientS3 import StorageClient
+from .storageclient_s3 import StorageClient
 
 
 class FileStorageClient(StorageClient):
@@ -155,6 +155,7 @@ class FileStorageClient(StorageClient):
         :return <bool>: True if checksum also known
         """
         return self._exists(checksum)
+
 
 #    def purge_cache(self):
 #        """

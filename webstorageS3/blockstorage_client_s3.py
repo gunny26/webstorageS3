@@ -8,8 +8,8 @@ import os
 from io import BytesIO
 
 # own modules
-from .Checksums import Checksums
-from .StorageClientS3 import StorageClient
+from .shecksums import Checksums
+from .storageclient_s3 import StorageClient
 
 
 class BlockStorageError(Exception):

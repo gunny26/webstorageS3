@@ -5,17 +5,11 @@ import os
 import sys
 import yaml
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 # own modules
 from webstorageS3 import FileStorageClient, HOMEPATH, sizeof_fmt
 
-
-# # according to platform search for config file in home directory
-# if os.name == "nt":
-#     HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-# else:
-#     HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 def main():
@@ -32,7 +26,9 @@ def main():
             logging.info(
                 f"you can download this file with checksum {recipe['checksum']} from FileStorage"
             )
-            logging.info(f"example: fstool.py {recipe['checksum']} --outfile <outputfilename>")
+            logging.info(
+                f"example: fstool.py {recipe['checksum']} --outfile <outputfilename>"
+            )
 
     if args.arguments:
         client = FileStorageClient(
@@ -46,7 +42,9 @@ def main():
                 return
             with open(args.outfile, "ab") as outfile:
                 size = 0
-                logging.info(f"writing file with checksum {args.arguments[0]} to {args.outfile}")
+                logging.info(
+                    f"writing file with checksum {args.arguments[0]} to {args.outfile}"
+                )
                 recipe = client.get(args.arguments[0])
                 logging.info(yaml.dump(recipe, indent=2))
                 for block in client.read(args.arguments[0]):
@@ -143,8 +141,9 @@ def main():
         #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
         # }
         for checksum in client.list():
-            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
-
+            print(
+                f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}"
+            )
 
 
 if __name__ == "__main__":

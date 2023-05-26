@@ -19,16 +19,15 @@ import logging
 import botocore
 
 # own modules
-from webstorageS3 import WebStorageArchiveClient, FileStorageClient
+from webstorageS3 import (
+    WebStorageArchiveClient,
+    FileStorageClient,
+    HOMEPATH,
+    sizeof_fmt,
+)
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
-
-# according to platform search for config file in home directory
-if os.name == "nt":
-    HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-else:
-    HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
 
 
 def filemode(st_mode):
@@ -40,18 +39,6 @@ def filemode(st_mode):
     dic = {"7": "rwx", "6": "rw-", "5": "r-x", "4": "r--", "0": "---"}
     perm = str(oct(st_mode)[-3:])
     return is_dir + "".join(dic.get(x, x) for x in perm)
-
-
-def sizeof_fmt(num, suffix="B"):
-    """
-    function to convert numerical size number into human readable number
-    taken from https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
-    """
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)
 
 
 def ppls(absfile, filedata):
@@ -572,8 +559,10 @@ def main():
         # -l
         # list all available backupsets
         for checksum in wsa.list():
-            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
-        #for value in wsa.get_backupsets(args.hostname):
+            print(
+                f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}"
+            )
+        # for value in wsa.get_backupsets(args.hostname):
         #    logging.info(
         #        "%(date)10s %(time)8s %(hostname)s\t%(tag)s\t%(basename)s\t%(size)s",
         #        value,

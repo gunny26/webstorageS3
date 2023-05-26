@@ -165,7 +165,9 @@ def main():
         #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
         # }
         for checksum in client.list():
-            logging.info(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}")
+            logging.info(
+                f"{checksum['LastModified']} {sizeof_fmt(checksum['Size']):>8} {checksum['Key']}"
+            )
 
 
 if __name__ == "__main__":
@@ -204,7 +206,7 @@ if __name__ == "__main__":
         action="store_true",
         help="output data to stdout, otherwise only meta data will be shown",
     )
-    transfer_parser = parser.add_argument_group('transfer')
+    transfer_parser = parser.add_argument_group("transfer")
     transfer_parser.add_argument(
         "--copy",
         action="store_true",

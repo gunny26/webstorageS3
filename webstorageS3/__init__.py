@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 import os
 
-from .BlockStorageClientS3 import BlockStorageClient, BlockStorageError
-from .Checksums import Checksums
-from .FileStorageClientS3 import FileStorageClient
-from .WebStorageArchiveClientS3 import WebStorageArchiveClient
-
+from .blockstorage_client_s3 import BlockStorageClient, BlockStorageError
+from .checksums import Checksums
+from .filestorage_client_s3 import FileStorageClient
+from .webstorage_archive_client_s3 import WebStorageArchiveClient
 
 # according to platform search for config file in home directory
 if os.name == "nt":
