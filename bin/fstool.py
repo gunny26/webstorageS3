@@ -8,10 +8,9 @@ import yaml
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 # own modules
-from webstorageS3 import FileStorageClient
+from webstorageS3 import FileStorageClient, HOMEPATH, sizeof_fmt
 
 
-HOMEPATH = webstorageS3.HOMEPATH
 # # according to platform search for config file in home directory
 # if os.name == "nt":
 #     HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")

@@ -1,33 +1,16 @@
 #!/usr/bin/python3
-import hashlib
 import argparse
-import yaml
+import hashlib
 import logging
 import os
 import sys
 
+import yaml
+
 # own modules
-from webstorageS3 import BlockStorageClient
+from webstorageS3 import HOMEPATH, BlockStorageClient, sizeof_fmt
 
-logging.basicConfig(level=logging.INFO)
-
-# according to platform search for config file in home directory
-if os.name == "nt":
-    HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-else:
-    HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
-
-
-def sizeof_fmt(num, suffix="B"):
-    """
-    function to convert numerical size number into human readable number
-    taken from https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
-    """
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 def main():
