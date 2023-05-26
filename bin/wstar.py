@@ -715,7 +715,7 @@ if __name__ == "__main__":
     )
     group_test.add_argument(
         "-l",
-        dest="list",
+        "--list",
         action="store_true",
         help="list backupsets, use --backupset to specify one specific",
     )
