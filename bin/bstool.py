@@ -18,6 +18,18 @@ else:
     HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
 
 
+def sizeof_fmt(num, suffix="B"):
+    """
+    function to convert numerical size number into human readable number
+    taken from https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+    """
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, "Yi", suffix)
+
+
 def main():
 
     if args.arguments:
@@ -162,8 +174,16 @@ def main():
             homepath=args.homepath, cache=args.cache, s3_backend=args.backend
         )
         logging.info("checking all stored checksum, this could take some time")
+        # {
+        #   'Key': '00b8abb14057692f7b6b272af1406b340392454c',
+        #   'LastModified': datetime.datetime(2023, 4, 5, 12, 18, 7, tzinfo=tzutc()),
+        #   'ETag': '"2489cb415910191739b6633dc1e3e287"',
+        #   'Size': 1048576,
+        #   'StorageClass': 'STANDARD',
+        #   'Owner': {'ID': 'c637bcf892367c407abbbe39c4ee9a949f384286f8873b81f82dcda07185f7b1'}
+        # }
         for checksum in client.list():
-            print(checksum)
+            print(f"{checksum['LastModified']} {sizeof_fmt(checksum['Size'])}\t{checksum['Key']}")
 
 
 if __name__ == "__main__":
@@ -202,17 +222,18 @@ if __name__ == "__main__":
         action="store_true",
         help="output data to stdout, otherwise only meta data will be shown",
     )
-    parser.add_argument(
+    transfer_parser = parser.add_argument_group('transfer')
+    transfer_parser.add_argument(
         "--copy",
         action="store_true",
         help="copy every block from source to target bucket <LONG OPERATION>",
     )
-    parser.add_argument(
+    transfer_parser.add_argument(
         "--sync",
         action="store_true",
         help="copy cached blocks from source to target bucket",
     )
-    parser.add_argument(
+    transfer_parser.add_argument(
         "--target-backend", help="target bucket for copy or sync operation"
     )
     parser.add_argument(
