@@ -8,15 +8,9 @@ import json
 import tarfile
 import os
 
-from webstorageS3 import FileStorageClient, WebStorageArchiveClient
+from webstorageS3 import FileStorageClient, WebStorageArchiveClient, HOMEPATH
 
 logging.basicConfig(level=logging.INFO)
-
-# according to platform search for config file in home directory
-if os.name == "nt":
-    HOMEPATH = os.path.join(os.path.expanduser("~"), "AppData", "Local", "webstorage")
-else:
-    HOMEPATH = os.path.join(os.path.expanduser("~"), ".webstorage")
 
 
 def main():
@@ -88,7 +82,7 @@ def main():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        "Tool to store streamed tar archives to WebStorageS3"
+        "Tool to store streamed tar archives from stdin to WebStorageS3"
     )
     parser.add_argument(
         "-v",
@@ -119,17 +113,10 @@ if __name__ == "__main__":
 
     logging.debug(args)
 
-    # checking homepath
-    if not os.path.isdir(args.homepath):
-        logging.error(
-            f"first create directory {args.homepath} and place webstorage.yml file in there"
-        )
-        sys.exit(1)
-
     try:
 
-        fsc = FileStorageClient(s3_backend=args.backend)
-        wsa = WebStorageArchiveClient(s3_backend=args.backend)
+        fsc = FileStorageClient(s3_backend=args.backend, homepath=args.homepath)
+        wsa = WebStorageArchiveClient(s3_backend=args.backend, homepath=args.homepath)
         main()
 
     except KeyboardInterrupt:

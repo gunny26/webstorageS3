@@ -208,7 +208,7 @@ class StorageClient:
 
     def purge_cache(self):
         """
-        delete locally cached checksums
+        delete locally cached checksums, useful if inherited by blockstorage_client or filestorage_client
         """
         self._logger.info(
             f"deleting local cached checksum database in file {self._cache_filename}"

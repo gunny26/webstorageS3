@@ -23,7 +23,9 @@ class FileStorageClient(StorageClient):
     the recipe to reassemble will be stored in FileStorage
     """
 
-    def __init__(self, cache=True, homepath=None, s3_backend="DEFAULT"):
+    def __init__(
+        self, cache: bool = True, homepath: str = None, s3_backend: str = "DEFAULT"
+    ):
         """__init__"""
         super().__init__(homepath=homepath, s3_backend=s3_backend)
         self._bs = BlockStorageClient(
@@ -101,7 +103,7 @@ class FileStorageClient(StorageClient):
         metadata["filehash_exists"] = True
         return metadata
 
-    def _put(self, checksum, data):
+    def _put(self, checksum: str, data: dict) -> tuple:
         """
         put some arbitrary data into storage
         :param checksum <str>: hexdigest of checksum
@@ -118,7 +120,7 @@ class FileStorageClient(StorageClient):
         self._cache.add(checksum)  # add to local cache
         return checksum, 200  # fake
 
-    def read(self, checksum):
+    def read(self, checksum: str):
         """
         return data as generator
         yields data blocks of self.blocksize
@@ -128,7 +130,7 @@ class FileStorageClient(StorageClient):
         for block in self.get(checksum)["blockchain"]:
             yield self._bs.get(block)
 
-    def get(self, checksum):
+    def get(self, checksum: str) -> str:
         """
         returns blockchain of file defined by hexdigest
 
@@ -144,13 +146,10 @@ class FileStorageClient(StorageClient):
         data = b_buffer.read().decode("utf-8")
         return json.loads(data)
 
-    def exists(self, checksum, force=False):
+    def exists(self, checksum: str) -> bool:
         """
         return True if checksum is in local cache
-        TODO: also check S3 Backend ?
 
         :param checksum <str>: hexdigest of checksum
-        :param force <bool>:if True check S3 backend
-        :return <bool>: True if checksum also known
         """
         return self._exists(checksum)
