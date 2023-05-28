@@ -16,8 +16,7 @@ import yaml
 
 from .checksums import Checksums
 
-#
-logger = logging.getLogger("StorageClient")
+logger = logging.getLogger(__name__)
 
 
 class StorageClient:
@@ -27,10 +26,11 @@ class StorageClient:
     """
 
     def __init__(self, homepath: str, s3_backend: str = "DEFAULT"):
-        logger.debug(f"s3_backend = {s3_backend}")
-        logger.debug(f"homepath   = {homepath}")
         self._s3_backend = s3_backend
         self._homepath = homepath
+
+        logger.debug(f"s3_backend = {s3_backend}")
+        logger.debug(f"homepath   = {homepath}")
 
         self._config = None  # holding yaml config
         self._logger = None  # logger
@@ -40,6 +40,7 @@ class StorageClient:
         self._cache = None  # will be set by _init_cache
         self._cache_filename = None  # will be set by _init_cache
 
+        # check config directory
         logger.debug(f"using config directory {self._homepath}")
         if not os.path.isdir(self._homepath):
             logger.error(
@@ -49,21 +50,19 @@ class StorageClient:
 
         # checking configfile
         configfile = os.path.join(self._homepath, "webstorage.yml")
-        if os.path.isfile(configfile):
-            with open(configfile, "rt", encoding="utf8") as infile:
+        if not os.path.isfile(configfile):
+            logger.error(f"configuration file {configfile} is missing")
+            sys.exit(2)
+
+        # load config
+        with open(configfile, "rt", encoding="utf8") as infile:
+            try:
                 self._config = {}
-                try:
-                    data = yaml.safe_load(infile.read())
-                    logger.debug(yaml.dump(data, indent=2))
-                    self._config.update(
-                        data["S3Backends"][s3_backend]
-                    )  # otherwise KeyError - invalid Config
-                except KeyError as exc:
-                    logger.exception(exc)
-                    logger.error(
-                        "invalid config file format, at least key S3Backends and Subkey DEFAULT must exist"
-                    )
-                    sys.exit(2)
+                data = yaml.safe_load(infile.read())
+                logger.debug(yaml.dump(data, indent=2))
+                self._config.update(
+                    data["S3Backends"][s3_backend]
+                )  # otherwise KeyError - invalid Config
                 # use proxy, if defined in config
                 if "HTTP_PROXY" in self._config:
                     os.environ["HTTP_PROXY"] = self._config["HTTP_PROXY"]
@@ -76,9 +75,12 @@ class StorageClient:
                     endpoint_url=self._config["S3_ENDPOINT_URL"],
                     use_ssl=self._config["S3_USE_SSL"],
                 )
-        else:
-            logger.error(f"configuration file {configfile} is missing")
-            sys.exit(2)
+            except KeyError as exc:
+                logger.exception(exc)
+                logger.error(
+                    "invalid config file format, at least key S3Backends and Subkey DEFAULT must exist"
+                )
+                sys.exit(2)
 
     @property
     def hashfunc(self):

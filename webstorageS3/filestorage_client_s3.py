@@ -14,6 +14,8 @@ from .blockstorage_client_s3 import BlockStorageClient
 # own modules
 from .storageclient_s3 import StorageClient
 
+logger = logging.getLogger(__name__)
+
 
 class FileStorageClient(StorageClient):
     """
@@ -23,10 +25,7 @@ class FileStorageClient(StorageClient):
 
     def __init__(self, cache=True, homepath=None, s3_backend="DEFAULT"):
         """__init__"""
-        super(FileStorageClient, self).__init__(
-            homepath=homepath, s3_backend=s3_backend
-        )
-        self._logger = logging.getLogger(self.__class__.__name__)
+        super().__init__(homepath=homepath, s3_backend=s3_backend)
         self._bs = BlockStorageClient(
             cache=cache, homepath=homepath, s3_backend=s3_backend
         )
@@ -75,7 +74,7 @@ class FileStorageClient(StorageClient):
             metadata["size"] += len(data)
             filehash.update(data)  # running filehash until end
             checksum, status = self._bs.put(data, use_cache=True)
-            self._logger.debug(
+            logger.debug(
                 "PUT blockcount: %d, checksum: %s, status: %s",
                 len(metadata["blockchain"]),
                 checksum,
@@ -86,7 +85,7 @@ class FileStorageClient(StorageClient):
                 metadata["blockhash_exists"] += 1
             metadata["blockchain"].append(checksum)
             data = fh.read(self._bs.blocksize)
-        self._logger.debug(
+        logger.debug(
             "put %d blocks in BlockStorage, %d existed already",
             len(metadata["blockchain"]),
             metadata["blockhash_exists"],
@@ -95,10 +94,10 @@ class FileStorageClient(StorageClient):
         filedigest = filehash.hexdigest()
         metadata["checksum"] = filedigest
         if filedigest not in self._cache:  # check if filehash is already stored
-            self._logger.debug("storing recipe for filechecksum: %s", filedigest)
+            logger.debug("storing recipe for filechecksum: %s", filedigest)
             self._put(filedigest, metadata)
             return metadata
-        self._logger.debug("filehash %s already stored", filedigest)
+        logger.debug("filehash %s already stored", filedigest)
         metadata["filehash_exists"] = True
         return metadata
 
@@ -109,7 +108,7 @@ class FileStorageClient(StorageClient):
         :param data <dict>: meta data to this checksum
         """
         if checksum in self._cache:
-            self._logger.debug(
+            logger.debug(
                 "202 - skip this block, checksum is in list of cached checksums"
             )
             return checksum, 202
@@ -155,16 +154,3 @@ class FileStorageClient(StorageClient):
         :return <bool>: True if checksum also known
         """
         return self._exists(checksum)
-
-
-#    def purge_cache(self):
-#        """
-#        delete locally cached checksums
-#        """
-#        self._logger.info(
-#            f"deleting local cached checksum database in file {self.cache_filename}"
-#        )
-#        del self._cache  # to close database and release file
-#        os.unlink(self._cache_filename)
-#        self._cache = Checksums(self._cache_filename)
-#        self._bs.purge_cache()

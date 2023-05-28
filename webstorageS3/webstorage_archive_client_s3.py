@@ -17,6 +17,8 @@ import botocore
 # own modules
 from .storageclient_s3 import StorageClient
 
+logger = logging.getLogger(__name__)
+
 
 class WebStorageArchiveClient(StorageClient):
     """
@@ -25,12 +27,9 @@ class WebStorageArchiveClient(StorageClient):
 
     def __init__(self, homepath=None, s3_backend="DEFAULT"):
         """__init__"""
-        super(WebStorageArchiveClient, self).__init__(
-            homepath=homepath, s3_backend=s3_backend
-        )
-        self._logger = logging.getLogger(self.__class__.__name__)
+        super().__init__(homepath=homepath, s3_backend=s3_backend)
         self._bucket_name = self._config["WEBSTORAGE_BUCKET_NAME"]
-        self._logger.debug("bucket list: %s", self._client.list_buckets())
+        logger.debug("bucket list: %s", self._client.list_buckets())
 
     @staticmethod
     def _gzip_str(data: dict):
@@ -71,7 +70,7 @@ class WebStorageArchiveClient(StorageClient):
         """
         result = {}
         for key in self._list_objects():  # get keys in bucket
-            self._logger.debug(f"found key {key}")
+            logger.debug(f"found key {key}")
             response = self._client.head_object(
                 Bucket=self._bucket_name, Key=key
             )  # TODO: exceptions
@@ -147,7 +146,7 @@ class WebStorageArchiveClient(StorageClient):
         sha256 = hashlib.sha256()
         sha256.update(json.dumps(data, sort_keys=True).encode("utf-8"))
         data["checksum"] = sha256.hexdigest()
-        self._logger.info(f"checksum of archive {data['checksum']}")
+        logger.info(f"checksum of archive {data['checksum']}")
         # store
         extra_args = {
             "Metadata": {
@@ -157,11 +156,8 @@ class WebStorageArchiveClient(StorageClient):
             }
         }
         key = self.get_key(data)  # building key sortable
-        # f_object = BytesIO(json.dumps(data).encode("utf-8"))
         f_object = self._gzip_str(json.dumps(data))
-        # self._logger.info(f"storing wstar as {data['checksum']}")
-        # self._client.upload_fileobj(f_object, self._bucket_name, data["checksum"], ExtraArgs=extra_args)
-        self._logger.info(f"storing wstar as {key}")
+        logger.info(f"storing wstar as {key}")
         self._client.upload_fileobj(
             f_object, self._bucket_name, key, ExtraArgs=extra_args
         )
@@ -170,9 +166,9 @@ class WebStorageArchiveClient(StorageClient):
         """
         delete some key in bucket, basic S3 function
         """
-        self._logger.info(f"deleting key {key}")
+        logger.info(f"deleting key {key}")
         res = self._client.delete_object(Bucket=self._bucket_name, Key=key)
-        self._logger.info(f"result: {res}")
+        logger.info(f"result: {res}")
 
     def _exists(self, key: str) -> bool:
         """
@@ -194,7 +190,7 @@ class WebStorageArchiveClient(StorageClient):
         """
         for key in self._list_objects():  # get keys in bucket
             if re.match("[a-z0-9]{64}", key):  # only sha256 style names
-                self._logger.error(f"converting sha256 keyname {key}")
+                logger.error(f"converting sha256 keyname {key}")
                 data = self.read(key)
                 newkey = self.get_key(data)
                 self.save(data)
@@ -212,7 +208,7 @@ class WebStorageArchiveClient(StorageClient):
                 Bucket=self._bucket_name, Key=key
             )  # TODO: exceptions
             if not response.get("Metadata"):
-                self._logger.error(f"converting adding Metadata to key {key}")
+                logger.error(f"converting adding Metadata to key {key}")
                 data = self.read(key)
                 newkey = self.get_key(data)
                 self.save(data)

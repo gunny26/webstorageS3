@@ -11,6 +11,8 @@ from io import BytesIO
 from .checksums import Checksums
 from .storageclient_s3 import StorageClient
 
+logger = logging.getLogger(__name__)
+
 
 class BlockStorageError(Exception):
     pass
@@ -21,13 +23,11 @@ class BlockStorageClient(StorageClient):
 
     def __init__(self, homepath: str, cache: bool = True, s3_backend: str = "DEFAULT"):
         """__init__"""
-        super(BlockStorageClient, self).__init__(
-            homepath=homepath, s3_backend=s3_backend
-        )
-        self._cache = cache  # bool to indicate if persistent cache is used
-        self._logger = logging.getLogger(self.__class__.__name__)
+        super().__init__(homepath=homepath, s3_backend=s3_backend)
+
+        self._cache = None  # bool to indicate if persistent cache is used
         self._bucket_name = self._config["BLOCKSTORAGE_BUCKET_NAME"]
-        self._logger.info(f"{s3_backend} bucket to use: {self._bucket_name}")
+        logger.info(f"{s3_backend} bucket to use: {self._bucket_name}")
 
         self._check_bucket()
         self._init_cache(cache, "blockstorage")
@@ -50,7 +50,7 @@ class BlockStorageClient(StorageClient):
             )
         checksum = self._blockdigest(data)
         if use_cache and (checksum in self._cache):
-            self._logger.debug(
+            logger.debug(
                 "202 - skip this block, checksum is in list of cached checksums"
             )
             return checksum, 202
@@ -100,7 +100,7 @@ class BlockStorageClient(StorageClient):
         """
         delete locally cached checksums
         """
-        self._logger.info(
+        logger.info(
             f"deleting local cached checksum database in file {self._cache_filename}"
         )
         del self.checksums  # to close database and release file
