@@ -1,0 +1,32 @@
+webstorageS3
+[master df69247] automatic pre deployment commit
+ 28 files changed, 3724 insertions(+)
+ create mode 100644 build/lib/webstorageS3/BlockStorageClientS3.py
+ create mode 100644 build/lib/webstorageS3/Checksums.py
+ create mode 100644 build/lib/webstorageS3/FileStorageClientS3.py
+ create mode 100644 build/lib/webstorageS3/StorageClientS3.py
+ create mode 100644 build/lib/webstorageS3/WebStorageArchiveClientS3.py
+ create mode 100644 build/lib/webstorageS3/__init__.py
+ create mode 100644 build/lib/webstorageS3/blockstorage_client_s3.py
+ create mode 100644 build/lib/webstorageS3/checksums.py
+ create mode 100644 build/lib/webstorageS3/filestorage_client_s3.py
+ create mode 100644 build/lib/webstorageS3/storageclient_s3.py
+ create mode 100644 build/lib/webstorageS3/webstorage_archive_client_s3.py
+ create mode 100755 build/scripts-3.10/bstool.py
+ create mode 100755 build/scripts-3.10/fget.py
+ create mode 100755 build/scripts-3.10/fput.py
+ create mode 100755 build/scripts-3.10/fstool.py
+ create mode 100755 build/scripts-3.10/wstar.py
+ create mode 100644 dev/cloudserver_init.py
+ create mode 100644 dev/cloudserver_print.py
+ create mode 100644 dev/cloudserver_purge.py
+ create mode 100755 dev/copy_old.py
+ create mode 100644 dev/dev_cache.py
+ create mode 100644 stable.tmp
+ create mode 100644 tools/splitter.py
+ create mode 100644 tools/test_b64.py
+ create mode 100755 tools/wslist.py
+ create mode 100755 tools/wstar-import.py
+ create mode 100755 tools/wsverify.py
+ create mode 100644 webstorages3_2.10_amd64.snap
+using 2023-05-28-455a03a
