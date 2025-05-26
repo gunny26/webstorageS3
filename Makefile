@@ -1,15 +1,16 @@
-export PLATFORM ?= linux/arm64/v8
 export REPOSITORY_NAME ?= $(shell pwd | rev | cut -d/ -f 1 | rev)
 export DATESTRING ?= $(shell date -I)
 export TAG ?= $(shell git describe --always)
 
 latest:
+	git pull origin latest
 	git commit -a -m "automatic latest built commit"; echo 0
 	python3 setup.py install --user
 	git push origin latest
 
 stable:
 	git checkout master
+	git pull origin master
 	git merge latest
 	git commit -a -m "automatic stable commit"; echo 0
 	python3 setup.py install --user
