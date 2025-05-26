@@ -5,7 +5,8 @@ export TAG ?= $(shell git describe --always)
 latest:
 	git pull origin latest
 	git commit -a -m "automatic latest built commit"; echo 0
-	python3 setup.py install --user
+	python3 -m build
+	python3 -m installer
 	git push origin latest
 
 stable:
@@ -13,8 +14,8 @@ stable:
 	git pull origin master
 	git merge latest
 	git commit -a -m "automatic stable commit"; echo 0
-	python3 setup.py install --user
-	python3 setup.py bdist_wheel
+	python3 -m build
+	python3 -m installer
 	git push origin master
 	git checkout latest
 
