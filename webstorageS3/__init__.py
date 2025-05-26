@@ -5,6 +5,7 @@ from .blockstorage_client_s3 import BlockStorageClient, BlockStorageError
 from .checksums import Checksums
 from .filestorage_client_s3 import FileStorageClient
 from .webstorage_archive_client_s3 import WebStorageArchiveClient
+from .storageclient_s3 import StorageClient
 
 # according to platform search for config file in home directory
 if os.name == "nt":
