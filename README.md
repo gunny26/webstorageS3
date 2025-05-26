@@ -48,3 +48,12 @@ Archived made by wstar will store the data in FileStorage and Blockstorage
 and keep metadata of archived files like a tar archive.
 this metadata will be stored in WebArchive Bucket.
 - every WebstorageArchive will be named by checksum of metadata
+
+## to use the makefile on ubuntu 24.04
+
+install these packages
+
+* sudo apt install python3-build
+* sudo apt install python3-venv
+* sudo apt install python3-installer
+
